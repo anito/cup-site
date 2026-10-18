@@ -25,6 +25,12 @@ const features = [
 		y: 80
 	},
 	{
+		title: 'Cognac leather sleeve',
+		text: 'A hand-stitched full-grain leather sleeve keeps the cup comfortable to hold at 65 °C, and carries the Levo mark debossed on the back. It replaces the handle, so nothing breaks the line of the cup.',
+		x: 36,
+		y: 30
+	},
+	{
 		title: 'Induction liner',
 		text: 'Double-wall brushed steel. Heat is induced in the liner itself, so the drink warms evenly with no hot spots and no cord.',
 		x: 55,

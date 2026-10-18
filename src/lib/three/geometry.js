@@ -1,22 +1,20 @@
 /* Parametric Levo geometry: a JS port of blender/build_levo.py (same profile numbers),
-   so the live scene and the Blender source stay in step. y is up; the handle is on +x
+   so the live scene and the Blender source stay in step. y is up; the front (towards the camera) is +z
    and the front of the cup (towards the camera) is +z. */
 import {
 	BufferGeometry,
 	CanvasTexture,
-	CatmullRomCurve3,
 	Color,
 	Float32BufferAttribute,
 	LinearSRGBColorSpace,
 	SRGBColorSpace,
-	TorusGeometry,
-	TubeGeometry,
-	Vector3
+	TorusGeometry
 } from 'three';
 
 export const PRINT = {
-	y0: 0.09,
-	y1: 0.97,
+	// taller than the cup (y 0.04 .. 1.01): the strip's top and bottom edges are never visible
+	y0: -0.03,
+	y1: 1.07,
 	arc: 0.34,
 	center: (-70 * Math.PI) / 180
 };
@@ -61,7 +59,7 @@ export function chaikin(points, labels, passes) {
 	return { points, labels };
 }
 
-/* angle -> colour along the Halo band: cyan on the handle side to amber on the far side */
+/* angle -> colour along the Halo band: cyan at angle 0 (+x) to amber on the far side */
 const RAMP = [
 	[0.0, [0.0, 0.62, 1.0]],
 	[0.35, [0.25, 0.3, 1.0]],
@@ -192,21 +190,15 @@ export function lipGlow(radius, tube) {
 	return g;
 }
 
-/** Thin rounded-rectangle handle tube, ends buried in the wall. */
-export function handle() {
-	const x1 = 0.64, y1 = 0.865, y0 = 0.52, r = 0.1, n = 14;
-	const path = [[0.395, 0.865]];
-	for (let k = 0; k <= n; k++) {
-		const a = (Math.PI / 2) * (1 - k / n);
-		path.push([x1 - r + r * Math.cos(a), y1 - r + r * Math.sin(a)]);
-	}
-	for (let k = 0; k <= n; k++) {
-		const a = (-Math.PI / 2) * (k / n);
-		path.push([x1 - r + r * Math.cos(a), y0 + r + r * Math.sin(a)]);
-	}
-	path.push([0.362, 0.52]);
-	const curve = new CatmullRomCurve3(path.map(([x, y]) => new Vector3(x, y, 0)), false, 'centripetal');
-	return new TubeGeometry(curve, 220, 0.03, 16, false);
+/** Leather grip sleeve hugging the upper body, above the Halo groove. */
+export function sleeve(points) {
+	const n = points.length;
+	const wall = points.filter(([r, y], i) => y > 0.49 && y < 0.87 && r > 0.34 && i < n * 0.6);
+	const t = 0.024;
+	const inner = wall.map(([r, y]) => [r + 0.0015, y]);
+	const outer = wall.map(([r, y]) => [r + t, y]);
+	const profile = [inner[0], outer[0], ...outer.slice(1), inner[inner.length - 1], ...inner.slice(0, -1).reverse()];
+	return latheProfile(profile, new Array(profile.length - 1).fill(0), { segments: 256, passes: 2 }).geometry;
 }
 
 export function dockBody() {
@@ -237,9 +229,9 @@ export function drinkDisc() {
 /* ───────── textures ───────── */
 
 /** The label: alpha 1 on the smoked strip, 0 where the letters are knocked out (reads bottom to top). */
-export function labelTexture(w = 695, h = 1800) {
-	const cap = 500, stroke = 84, gap = 52;
-	const widths = { L: 290, E: 290, V: 350, O: 320 };
+export function labelTexture(w = 618, h = 2000) {
+	const cap = 455, stroke = 80, gap = 86;
+	const widths = { L: 330, E: 330, V: 400, O: 370 };
 	const word = 'LEVO';
 	const total = [...word].reduce((s, c) => s + widths[c], 0) + gap * (word.length - 1);
 
@@ -248,15 +240,24 @@ export function labelTexture(w = 695, h = 1800) {
 	cv.height = h;
 	const ctx = cv.getContext('2d');
 	ctx.fillStyle = '#fff';
-	ctx.beginPath();
-	ctx.roundRect(20, 20, w - 40, h - 40, 64);
-	ctx.fill();
+	ctx.fillRect(20, 0, w - 40, h); // runs off both ends of the texture (and past both ends of the cup)
 
 	ctx.save();
 	ctx.globalCompositeOperation = 'destination-out';
 	ctx.translate(w / 2, h / 2);
 	ctx.rotate(-Math.PI / 2);
 	ctx.translate(-total / 2, -cap / 2);
+	drawWord(ctx, word, widths, cap, stroke, gap);
+	ctx.restore();
+
+	const t = new CanvasTexture(cv);
+	t.colorSpace = LinearSRGBColorSpace;
+	t.anisotropy = 8;
+	return t;
+}
+
+/** Geometric letterforms shared by the label and the sleeve wordmark. */
+function drawWord(ctx, word, widths, cap, stroke, gap) {
 	let x = 0;
 	for (const c of word) {
 		const cw = widths[c];
@@ -284,11 +285,66 @@ export function labelTexture(w = 695, h = 1800) {
 		ctx.fill(c === 'O' ? 'evenodd' : 'nonzero');
 		x += cw + gap;
 	}
-	ctx.restore();
+}
 
+/* debossed wordmark + ring logo on the back of the sleeve (opposite the label) */
+export const BRAND = { arc: 0.5, y: 0.58, height: 0.075 };
+
+export function brandTexture() {
+	const w = 1200, h = 180;
+	const cv = document.createElement('canvas');
+	cv.width = w;
+	cv.height = h;
+	const ctx = cv.getContext('2d');
+	ctx.fillStyle = '#fff';
+	const cap = 84, stroke = 17, gap = 26;
+	const widths = { L: 66, E: 66, V: 82, O: 74 };
+	const word = 'LEVO';
+	const total = [...word].reduce((s, c) => s + widths[c], 0) + gap * (word.length - 1);
+	const logo = 84;
+	const full = logo + 44 + total;
+	ctx.translate((w - full) / 2, (h - cap) / 2);
+	// ring logo: a circle, an offset arc and a dot (echoes the Thermal Halo)
+	ctx.save();
+	ctx.strokeStyle = '#fff';
+	ctx.lineWidth = 9;
+	ctx.beginPath();
+	ctx.arc(logo / 2, cap / 2, logo / 2 - 5, 0, Math.PI * 2);
+	ctx.stroke();
+	ctx.beginPath();
+	ctx.arc(logo / 2, cap / 2, logo / 2 - 5, -Math.PI / 2, Math.PI / 2);
+	ctx.lineWidth = 17;
+	ctx.stroke();
+	ctx.beginPath();
+	ctx.arc(logo / 2, cap / 2, 9, 0, Math.PI * 2);
+	ctx.fill();
+	ctx.restore();
+	ctx.translate(logo + 44, 0);
+	drawWord(ctx, word, widths, cap, stroke, gap);
 	const t = new CanvasTexture(cv);
 	t.colorSpace = LinearSRGBColorSpace;
 	t.anisotropy = 8;
+	return t;
+}
+
+/** Fine leather grain for the sleeve bump map. */
+export function leatherGrainTexture() {
+	const s = 256;
+	const cv = document.createElement('canvas');
+	cv.width = cv.height = s;
+	const ctx = cv.getContext('2d');
+	ctx.fillStyle = '#808080';
+	ctx.fillRect(0, 0, s, s);
+	for (let i = 0; i < 5200; i++) {
+		const g = 60 + Math.random() * 140;
+		ctx.fillStyle = `rgb(${g},${g},${g})`;
+		ctx.beginPath();
+		ctx.arc(Math.random() * s, Math.random() * s, 1.5 + Math.random() * 3, 0, Math.PI * 2);
+		ctx.fill();
+	}
+	const t = new CanvasTexture(cv);
+	t.wrapS = t.wrapT = 1000; // RepeatWrapping
+	t.repeat.set(16, 3);
 	return t;
 }
 

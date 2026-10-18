@@ -102,44 +102,16 @@ def lathe(name, profile, edge_labels, mats, segments=SEGMENTS, passes=CHAIKIN_PA
     return obj
 
 
-def rounded_path(start, end, x1, z1, z0, r, n=14):
-    """Open path in the XZ plane: start -> right along the top, down the outer edge,
-    back left along the bottom to end, with rounded corners of radius r."""
-    pts = [start]
-    for k in range(n + 1):  # top-right corner, 90deg -> 0deg
-        a = math.pi / 2 * (1 - k / n)
-        pts.append((x1 - r + r * math.cos(a), z1 - r + r * math.sin(a)))
-    for k in range(n + 1):  # bottom-right corner, 0 -> -90deg
-        a = -math.pi / 2 * (k / n)
-        pts.append((x1 - r + r * math.cos(a), z0 + r + r * math.sin(a)))
-    pts.append(end)
-    return pts
-
-
-def build_handle(mat):
-    cu = bpy.data.curves.new("LevoHandleCurve", "CURVE")
-    cu.dimensions = "3D"
-    cu.bevel_depth = 1.0
-    cu.bevel_resolution = 12
-    cu.use_fill_caps = True
-    sp = cu.splines.new("POLY")
-    path = rounded_path((0.395, 0.865), (0.362, 0.520), 0.640, 0.865, 0.520, 0.10)
-    sp.points.add(len(path) - 1)
-    for p, (x, z) in zip(sp.points, path):
-        p.co = (x, 0.0, z, 1.0)
-        p.radius = 0.030
-    obj = bpy.data.objects.new("LevoHandle", cu)
-    bpy.context.collection.objects.link(obj)
-    bpy.context.view_layer.objects.active = obj
-    obj.select_set(True)
-    bpy.ops.object.convert(target="MESH")
-    obj = bpy.context.view_layer.objects.active
-    obj.name = "LevoHandle"
-    for p in obj.data.polygons:
-        p.use_smooth = True
-    obj.data.materials.append(mat)
-    obj.select_set(False)
-    return obj
+def build_sleeve(mat):
+    """Leather grip sleeve hugging the upper body (above the Halo groove)."""
+    pts, _ = chaikin(PROFILE, EDGE_MAT, CHAIKIN_PASSES)
+    n = len(pts)
+    wall = [(r, y) for i, (r, y) in enumerate(pts) if 0.49 < y < 0.87 and r > 0.34 and i < n * 0.6]
+    t = 0.024
+    inner = [(r + 0.0015, y) for r, y in wall]
+    outer = [(r + t, y) for r, y in wall]
+    profile = [inner[0], outer[0]] + outer[1:] + [inner[-1]] + inner[-2::-1]
+    return lathe("LevoSleeve", profile, [0] * (len(profile) - 1), [mat], passes=2)
 
 
 def build_drink(mat):
@@ -182,18 +154,18 @@ def build_dock(mat_body, mat_glow):
 # --------------------------------------------------------------------------
 
 PRINT_PATH = os.path.join(HERE, "levo_print.png")
-PRINT_Z0, PRINT_Z1 = 0.09, 0.97       # the label spans (almost) the full body height
+PRINT_Z0, PRINT_Z1 = -0.03, 1.07      # strip is taller than the cup: its top and bottom edges are never seen
 PRINT_ARC = 0.34                      # label width measured along the surface (object units)
 PRINT_CENTER = math.radians(-70)      # object angle the label is centred on (faces camera at t=0)
 
 
-def make_print_texture(path=PRINT_PATH, w=695, h=1800):
+def make_print_texture(path=PRINT_PATH, w=618, h=2000):
     """Alpha = 1 inside the label, 0 where the letters are knocked out."""
     from PIL import Image, ImageDraw
 
-    cap, stroke = 500, 84
-    widths = {"L": 290, "E": 290, "V": 350, "O": 320}
-    gap = 52
+    cap, stroke = 455, 80
+    widths = {"L": 330, "E": 330, "V": 400, "O": 370}
+    gap = 86
     word = "LEVO"
     total = sum(widths[c] for c in word) + gap * (len(word) - 1)
 
@@ -221,7 +193,7 @@ def make_print_texture(path=PRINT_PATH, w=695, h=1800):
 
     text = text.rotate(90, expand=True)            # reads bottom -> top, letter tops face left
     label = Image.new("L", (w, h), 0)
-    ImageDraw.Draw(label).rounded_rectangle((20, 20, w - 20, h - 20), radius=64, fill=255)
+    ImageDraw.Draw(label).rectangle((20, 0, w - 20, h), fill=255)
     knock = Image.new("L", (w, h), 0)
     knock.paste(text, ((w - text.width) // 2, (h - text.height) // 2))
     alpha = Image.eval(knock, lambda v: 255 - v)
@@ -392,6 +364,39 @@ def mat_shell():
     setv(b, "Anisotropic", 0.65)
     link(nt, spec, "Result", b, "Specular IOR Level")
     setv(b, "Coat Weight", 0.0)
+    link(nt, b, "BSDF", out, "Surface")
+    return m
+
+
+def mat_leather():
+    """Cognac full-grain leather; the smoked label runs across it too."""
+    m, nt, out = new_material("Sleeve_Leather")
+    tc = nt.nodes.new("ShaderNodeTexCoord"); tc.location = (-1500, 0)
+    grain = noise(nt, (-900, 200), 380.0, 4.0)
+    link(nt, tc, "Object", grain, "Vector")
+    bump = nt.nodes.new("ShaderNodeBump"); bump.location = (-500, 200)
+    bump.inputs["Strength"].default_value = 0.35
+    bump.inputs["Distance"].default_value = 0.004
+    link(nt, grain, "Fac", bump, "Height")
+    var = noise(nt, (-900, 0), 5.0, 4.0)
+    link(nt, tc, "Object", var, "Vector")
+    col = ramp(nt, [(0.3, (0.17, 0.055, 0.020, 1)), (0.7, (0.27, 0.100, 0.036, 1))], "LINEAR", (-500, 0))
+    link(nt, var, "Fac", col, "Fac")
+    img = add_print(nt, tc)
+    k = nt.nodes.new("ShaderNodeMath"); k.operation = "MULTIPLY"; k.location = (-300, -60)
+    k.inputs[1].default_value = 0.93
+    link(nt, img, "Alpha", k, 0)
+    ink = nt.nodes.new("ShaderNodeMix"); ink.data_type = "RGBA"; ink.location = (-100, 80)
+    ink.inputs["B"].default_value = (0.004, 0.005, 0.008, 1)
+    link(nt, col, "Color", ink, "A")
+    link(nt, k, 0, ink, "Factor")
+    b = nt.nodes.new("ShaderNodeBsdfPrincipled"); b.location = (400, 0)
+    link(nt, ink, "Result", b, "Base Color")
+    link(nt, bump, "Normal", b, "Normal")
+    setv(b, "Roughness", 0.5)
+    setv(b, "Coat Weight", 0.06)
+    setv(b, "Coat Roughness", 0.3)
+    setv(b, "Sheen Weight", 0.1)
     link(nt, b, "BSDF", out, "Surface")
     return m
 
@@ -611,12 +616,12 @@ def build():
     scene = bpy.context.scene
     shell, liner, halo = mat_shell(), mat_liner(), mat_halo()
     body = lathe("LevoBody", PROFILE, EDGE_MAT, [shell, liner, halo])
-    handle = build_handle(shell)
+    sleeve = build_sleeve(mat_leather())
     drink = build_drink(mat_drink())
 
     root = bpy.data.objects.new("LevoRoot", None)
     bpy.context.collection.objects.link(root)
-    for ob in (body, handle, drink):
+    for ob in (body, sleeve, drink):
         ob.parent = root
 
     build_dock(mat_dock_body(), mat_dock_glow())

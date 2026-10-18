@@ -15,7 +15,8 @@ Levo hovers above a wireless dock on a six-millimetre magnetic cushion. Inductio
 ## Details
 
 - **Material:** bead-blasted, anodised champagne titanium with fine anisotropic lathe lines, lit by tall strip softboxes so the body picks up long machined-metal highlights.
-- **Label:** a full-height, vertical, negative "LEVO" (knocked out of a smoked matte-black label), generated as an alpha texture in `build_levo.py` and mapped cylindrically (constant width on the tapered body). The same mask dims the Thermal Halo shader to about a third, so the ring stays visible through the label.
+- **Label:** a vertical, negative "LEVO" knocked out of a smoked matte-black strip that is taller than the cup, so its top and bottom edges are never visible and the lettering spans the whole height. It is generated as an alpha texture and mapped cylindrically (constant width on the tapered body). The same mask dims the Thermal Halo shader to about a third, so the ring stays visible through the label, and it continues across the sleeve.
+- **Sleeve (no handle):** a cognac full-grain leather grip sleeve with a hand-stitched seam and a debossed ring-and-LEVO mark on the back.
 - **Steam:** `src/lib/components/Steam.svelte` is a small WebGL smoke shader. Scroll velocity feeds a damped follower (about 0.5 s), so the smoke keeps drifting after you stop scrolling; the pointer pushes it around; it takes the chapter colour.
 
 ## Hosting

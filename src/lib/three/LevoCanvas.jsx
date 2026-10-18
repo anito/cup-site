@@ -8,7 +8,7 @@ import {
 	cupBody,
 	haloShell,
 	lipGlow,
-	handle as handleGeometry,
+	sleeve as sleeveGeometry,
 	dockBody,
 	dockRing,
 	drinkDisc
@@ -31,7 +31,7 @@ function Levo({ rig, onReady }) {
 		() => ({
 			shells: [haloShell(body.points, 0.012), haloShell(body.points, 0.03)],
 			lip: lipGlow(0.416, 0.03),
-			handle: handleGeometry(),
+			sleeve: sleeveGeometry(body.points),
 			dock: dockBody(),
 			ringA: dockRing(0.44, 0.011),
 			ringB: dockRing(0.55, 0.006),
@@ -97,7 +97,7 @@ function Levo({ rig, onReady }) {
 			{/* cup */}
 			<group ref={cup}>
 				<mesh geometry={body.geometry} material={[mats.shell, mats.liner, mats.halo]} />
-				<mesh geometry={geo.handle} material={mats.handle} />
+				<mesh geometry={geo.sleeve} material={mats.sleeve} />
 				<mesh geometry={geo.drink} material={mats.drink} />
 				<mesh geometry={geo.shells[0]} material={mats.haloGlow[0]} renderOrder={3} />
 				<mesh geometry={geo.shells[1]} material={mats.haloGlow[1]} renderOrder={3} />
