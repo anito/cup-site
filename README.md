@@ -19,7 +19,7 @@ Levo hovers above its own lid, flipped into a wireless coaster, on a six-millime
 
 - **Material:** bead-blasted, anodised champagne titanium with fine anisotropic lathe lines, lit by tall strip softboxes so the body picks up long machined-metal highlights.
 - **Label:** a vertical, negative "LEVO" knocked out of a smoked matte-black strip that is taller than the cup, so its top and bottom edges are never visible and the lettering spans the whole height. It is generated as an alpha texture and mapped cylindrically (constant width on the tapered body). The same mask dims the Thermal Halo shader to about a third, so the ring stays visible through the label, and it continues across the sleeve.
-- **Sleeve (no handle):** a cognac full-grain leather grip sleeve with a hand-stitched seam and a debossed ring-and-LEVO mark on the back.
+- **Sleeve (no handle):** a cognac full-grain leather grip sleeve with five rounded circumferential grooves (real geometry), a hand-stitched seam and a debossed ring-and-LEVO mark on the back. The shader derives the leather thickness from the object-space radius, so where the grooves make it thin it turns translucent (about 20% opaque) and the label on the cup shows through; the ridges stay opaque. The same thickness logic is in the Blender shader (Mix Shader with a Transparent BSDF).
 - **Steam:** `src/lib/components/Steam.svelte` is a small WebGL smoke shader. Scroll velocity feeds a damped follower (about 0.5 s), so the smoke keeps drifting after you stop scrolling; the pointer pushes it around; it takes the chapter colour.
 
 ## Hosting

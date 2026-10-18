@@ -191,15 +191,34 @@ export function lipGlow(radius, tube) {
 	return g;
 }
 
-/** Leather grip sleeve hugging the upper body, above the Halo groove. */
-export function sleeve(points) {
-	const n = points.length;
-	const wall = points.filter(([r, y], i) => y > 0.49 && y < 0.87 && r > 0.34 && i < n * 0.6);
-	const t = 0.024;
-	const inner = wall.map(([r, y]) => [r + 0.0015, y]);
-	const outer = wall.map(([r, y]) => [r + t, y]);
-	const profile = [inner[0], outer[0], ...outer.slice(1), inner[inner.length - 1], ...inner.slice(0, -1).reverse()];
-	return latheProfile(profile, new Array(profile.length - 1).fill(0), { segments: 256, passes: 2 }).geometry;
+/* Sleeve profile: rounded circumferential grooves cut into the leather. Where the leather is
+   thin (the grooves) the shader makes it translucent, so the label on the cup shows through. */
+export const SLEEVE = {
+	thickness: 0.024,
+	grooveDepth: 0.017,
+	grooveHalf: 0.014,
+	centers: [0.55, 0.618, 0.686, 0.754, 0.822],
+	wallSlope: 0.1236, // the cup wall is a straight cone: r = r0 + slope * (y - 0.078)
+	wallR0: 0.318
+};
+const sleeveThickness = (y) => {
+	let g = 0;
+	for (const c of SLEEVE.centers) {
+		const d = Math.abs(y - c);
+		if (d < SLEEVE.grooveHalf) g = Math.max(g, 0.5 * (1 + Math.cos((Math.PI * d) / SLEEVE.grooveHalf)));
+	}
+	return SLEEVE.thickness - SLEEVE.grooveDepth * g;
+};
+
+/** Leather grip sleeve with grooves, hugging the upper body above the Halo groove. */
+export function sleeve() {
+	const rAt = (y) => SLEEVE.wallR0 + SLEEVE.wallSlope * (y - 0.078);
+	const y0 = 0.49, y1 = 0.87, n = 140;
+	const ys = Array.from({ length: n + 1 }, (_, i) => y0 + ((y1 - y0) * i) / n);
+	const inner = ys.map((y) => [rAt(y) + 0.0015, y]);
+	const outer = ys.map((y) => [rAt(y) + sleeveThickness(y), y]);
+	const profile = [inner[0], outer[0], ...outer.slice(1), inner[n], ...inner.slice(0, -1).reverse()];
+	return latheProfile(profile, new Array(profile.length - 1).fill(0), { segments: 256, passes: 1 }).geometry;
 }
 
 /* The lid is also the coaster: its glass underside (y = 0) becomes the coaster top when flipped. */

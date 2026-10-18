@@ -34,7 +34,7 @@ function Levo({ rig, onReady }) {
 		() => ({
 			shells: [haloShell(body.points, 0.012), haloShell(body.points, 0.03)],
 			lip: lipGlow(0.416, 0.03),
-			sleeve: sleeveGeometry(body.points),
+			sleeve: sleeveGeometry(),
 			lid: lidBody(),
 			ringA: lidRing(0.3, 0.011),
 			ringB: lidRing(0.41, 0.006),

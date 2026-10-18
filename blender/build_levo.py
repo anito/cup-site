@@ -102,16 +102,30 @@ def lathe(name, profile, edge_labels, mats, segments=SEGMENTS, passes=CHAIKIN_PA
     return obj
 
 
+SLEEVE_T = 0.024                                      # full leather thickness on the ridges
+GROOVE_DEPTH, GROOVE_HALF = 0.017, 0.014              # grooves leave ~0.007 of leather: translucent
+GROOVE_CENTERS = [0.550, 0.618, 0.686, 0.754, 0.822]
+WALL_SLOPE, WALL_R0 = 0.1236, 0.318                   # straight cone: r = R0 + SLOPE * (y - 0.078)
+
+
+def sleeve_thickness(y):
+    g = 0.0
+    for c in GROOVE_CENTERS:
+        d = abs(y - c)
+        if d < GROOVE_HALF:
+            g = max(g, 0.5 * (1 + math.cos(math.pi * d / GROOVE_HALF)))
+    return SLEEVE_T - GROOVE_DEPTH * g
+
+
 def build_sleeve(mat):
-    """Leather grip sleeve hugging the upper body (above the Halo groove)."""
-    pts, _ = chaikin(PROFILE, EDGE_MAT, CHAIKIN_PASSES)
-    n = len(pts)
-    wall = [(r, y) for i, (r, y) in enumerate(pts) if 0.49 < y < 0.87 and r > 0.34 and i < n * 0.6]
-    t = 0.024
-    inner = [(r + 0.0015, y) for r, y in wall]
-    outer = [(r + t, y) for r, y in wall]
+    """Leather grip sleeve with rounded circumferential grooves, hugging the upper body."""
+    r_at = lambda y: WALL_R0 + WALL_SLOPE * (y - 0.078)
+    y0, y1, n = 0.49, 0.87, 140
+    ys = [y0 + (y1 - y0) * i / n for i in range(n + 1)]
+    inner = [(r_at(y) + 0.0015, y) for y in ys]
+    outer = [(r_at(y) + sleeve_thickness(y), y) for y in ys]
     profile = [inner[0], outer[0]] + outer[1:] + [inner[-1]] + inner[-2::-1]
-    return lathe("LevoSleeve", profile, [0] * (len(profile) - 1), [mat], passes=2)
+    return lathe("LevoSleeve", profile, [0] * (len(profile) - 1), [mat], passes=1)
 
 
 def build_drink(mat):
@@ -380,7 +394,7 @@ def mat_shell():
 
 
 def mat_leather():
-    """Cognac full-grain leather; the smoked label runs across it too."""
+    """Cognac leather that goes translucent where the grooves make it thin."""
     m, nt, out = new_material("Sleeve_Leather")
     tc = nt.nodes.new("ShaderNodeTexCoord"); tc.location = (-1500, 0)
     grain = noise(nt, (-900, 200), 380.0, 4.0)
@@ -393,22 +407,48 @@ def mat_leather():
     link(nt, tc, "Object", var, "Vector")
     col = ramp(nt, [(0.3, (0.17, 0.055, 0.020, 1)), (0.7, (0.27, 0.100, 0.036, 1))], "LINEAR", (-500, 0))
     link(nt, var, "Fac", col, "Fac")
-    img = add_print(nt, tc)
-    k = nt.nodes.new("ShaderNodeMath"); k.operation = "MULTIPLY"; k.location = (-300, -60)
-    k.inputs[1].default_value = 0.93
-    link(nt, img, "Alpha", k, 0)
-    ink = nt.nodes.new("ShaderNodeMix"); ink.data_type = "RGBA"; ink.location = (-100, 80)
-    ink.inputs["B"].default_value = (0.004, 0.005, 0.008, 1)
-    link(nt, col, "Color", ink, "A")
-    link(nt, k, 0, ink, "Factor")
-    b = nt.nodes.new("ShaderNodeBsdfPrincipled"); b.location = (400, 0)
-    link(nt, ink, "Result", b, "Base Color")
+
+    # leather thickness from the object-space radius: t = r - wall(y) - 0.0015
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ"); sep.location = (-1300, -400)
+    link(nt, tc, "Object", sep, "Vector")
+    xx = nt.nodes.new("ShaderNodeMath"); xx.operation = "POWER"; xx.inputs[1].default_value = 2.0
+    yy = nt.nodes.new("ShaderNodeMath"); yy.operation = "POWER"; yy.inputs[1].default_value = 2.0
+    link(nt, sep, "X", xx, 0)
+    link(nt, sep, "Y", yy, 0)
+    ad = nt.nodes.new("ShaderNodeMath"); ad.operation = "ADD"
+    link(nt, xx, 0, ad, 0)
+    link(nt, yy, 0, ad, 1)
+    rr = nt.nodes.new("ShaderNodeMath"); rr.operation = "SQRT"
+    link(nt, ad, 0, rr, 0)
+    line = nt.nodes.new("ShaderNodeMath"); line.operation = "MULTIPLY_ADD"
+    line.inputs[1].default_value = WALL_SLOPE
+    line.inputs[2].default_value = WALL_R0 - WALL_SLOPE * 0.078 + 0.0015
+    link(nt, sep, "Z", line, 0)
+    th = nt.nodes.new("ShaderNodeMath"); th.operation = "SUBTRACT"
+    link(nt, rr, 0, th, 0)
+    link(nt, line, 0, th, 1)
+    mr = nt.nodes.new("ShaderNodeMapRange"); mr.location = (-300, -400)
+    mr.inputs["From Min"].default_value = 0.009
+    mr.inputs["From Max"].default_value = 0.0165
+    link(nt, th, 0, mr, "Value")
+    op = nt.nodes.new("ShaderNodeMath"); op.operation = "MULTIPLY_ADD"; op.location = (-100, -400)
+    op.inputs[1].default_value = 0.8
+    op.inputs[2].default_value = 0.2                    # thin leather keeps ~20% opacity
+    link(nt, mr, "Result", op, 0)
+
+    b = nt.nodes.new("ShaderNodeBsdfPrincipled"); b.location = (200, 0)
+    link(nt, col, "Color", b, "Base Color")
     link(nt, bump, "Normal", b, "Normal")
     setv(b, "Roughness", 0.5)
     setv(b, "Coat Weight", 0.06)
     setv(b, "Coat Roughness", 0.3)
     setv(b, "Sheen Weight", 0.1)
-    link(nt, b, "BSDF", out, "Surface")
+    clear = nt.nodes.new("ShaderNodeBsdfTransparent"); clear.location = (200, -250)
+    mix = nt.nodes.new("ShaderNodeMixShader"); mix.location = (600, 0)
+    link(nt, op, 0, mix, "Fac")
+    link(nt, clear, "BSDF", mix, 1)
+    link(nt, b, "BSDF", mix, 2)
+    link(nt, mix, "Shader", out, "Surface")
     return m
 
 

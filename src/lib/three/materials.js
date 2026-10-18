@@ -7,6 +7,7 @@ import {
 import {
 	BRAND,
 	PRINT,
+	SLEEVE,
 	brandTexture,
 	labelTexture,
 	latheLinesTexture,
@@ -99,7 +100,7 @@ export function createMaterials() {
 		}
 	);
 
-	/* cognac full-grain leather: the label runs across it, a hand-stitched seam sits at the
+	/* cognac full-grain leather: grooves make it translucent where thin (the cup's label shows through), a hand-stitched seam sits at the
 	   old handle position and the brand is debossed on the back */
 	const brand = brandTexture();
 	const sleeve = withLabel(
@@ -107,6 +108,7 @@ export function createMaterials() {
 			color: linear(0.22, 0.08, 0.03),
 			roughness: 0.55,
 			metalness: 0,
+			transparent: true,
 			bumpMap: leatherGrainTexture(),
 			bumpScale: 1.2,
 			clearcoat: 0.06,
@@ -135,8 +137,9 @@ export function createMaterials() {
 				.replace(
 					'#include <color_fragment>',
 					`#include <color_fragment>
-					float lab = labelAlpha(vLocal) * 0.93;
-					diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.004, 0.005, 0.008), lab);
+					// leather thickness from the object-space radius; thin leather (the grooves) lets the label show through
+					float tt = length(vLocal.xz) - (${SLEEVE.wallR0.toFixed(4)} + ${SLEEVE.wallSlope.toFixed(4)} * (vLocal.y - 0.078)) - 0.0015;
+					diffuseColor.a *= mix(0.2, 1.0, smoothstep(0.009, 0.0165, tt));
 					diffuseColor.rgb *= 1.0 - 0.7 * brandAlpha(vLocal);
 					float ang = atan(-vLocal.z, vLocal.x);
 					float seam = smoothstep(0.0065, 0.0035, abs(ang) * length(vLocal.xz));

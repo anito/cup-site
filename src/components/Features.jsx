@@ -26,7 +26,7 @@ const features = [
 	},
 	{
 		title: 'Cognac leather sleeve',
-		text: 'A hand-stitched full-grain leather sleeve keeps the cup comfortable to hold at 65 °C, and carries the Levo mark debossed on the back. It replaces the handle, so nothing breaks the line of the cup.',
+		text: 'Five fine grooves are cut into a hand-stitched leather sleeve. Where the leather is thin it turns translucent, so the Levo lettering on the cup glows through between the ridges. It keeps the cup comfortable at 65 °C and replaces the handle.',
 		x: 36,
 		y: 30
 	},
