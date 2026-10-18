@@ -97,26 +97,25 @@ Stitch stitchPick(Stitch a, Stitch b){
 	return r;
 }
 /* the knocked-out letters of the cup's label (inside the strip), so the sleeve can stamp them */
-float letterMask(vec3 p){
+float letterMask(vec3 p, float bias){
 	float a = atan(-p.z, p.x) - ${PRINT.center.toFixed(6)};
 	a -= 6.283185307 * floor((a + 3.141592654) / 6.283185307);
 	float u = a * length(p.xz) / ${PRINT.arc.toFixed(5)} + 0.5;
 	float v = (p.y - ${PRINT.y0.toFixed(5)}) / ${(PRINT.y1 - PRINT.y0).toFixed(5)};
 	float inStrip = step(0.033, u) * step(u, 0.967);
-	return (1.0 - texture2D(uLabel, vec2(u, v)).a) * inStrip * step(abs(a), 1.2);
+	return (1.0 - texture2D(uLabel, vec2(u, v), bias).a) * inStrip * step(abs(a), 1.2);
 }
 `;
 
 /* shared grain: darkens the creases, tints cells, and returns the relief height */
 const GRAIN_FRAG = /* glsl */ `
-	// domain-warped cells give soft, irregular pebbles (not a regular polygon mesh)
-	vec3 warp = vec3(vnoise(P * 24.0), vnoise(P * 24.0 + 5.2), vnoise(P * 24.0 + 9.7)) - 0.5;
-	vec3 wk = worley(P * 36.0 + warp * 1.1);
-	float crease = 1.0 - smoothstep(0.0, 0.42, wk.y - wk.x);
-	float dome = 1.0 - smoothstep(0.0, 0.80, wk.x);
-	float fineN = vnoise(P * 110.0);
-	float pn = fbm3(P * 18.0);
-	diffuseColor.rgb *= (0.86 + 0.28 * pn) * (0.95 + 0.10 * wk.z) * (1.0 - 0.2 * crease) * (0.97 + 0.06 * fineN);
+	// fine matte nubuck-like grain: soft colour mottling and a very faint cellular wrinkle; the relief is the filtered bump map
+	vec3 wk = worley(P * 70.0);
+	float crease = 1.0 - smoothstep(0.0, 0.40, wk.y - wk.x);
+	float dome = 1.0 - smoothstep(0.0, 0.8, wk.x);
+	float fineN = vnoise(P * 150.0);
+	float pn = fbm3(P * 14.0);
+	diffuseColor.rgb *= (0.88 + 0.24 * pn) * (0.96 + 0.08 * wk.z) * (1.0 - 0.08 * crease) * (0.94 + 0.12 * fineN) * (0.97 + 0.06 * vnoise(P * 320.0));
 `;
 
 function withLabel(material, tex, inject) {
@@ -191,28 +190,26 @@ export function createMaterials() {
 	   it covers the label, with saddle stitching along both edges and up the seam, burnished rolled edges,
 	   patina mottling and the brand debossed on the back. */
 	const brand = brandTexture();
-	const leatherParams = () => ({
-		color: linear(0.23, 0.072, 0.02),
-		roughness: 0.5,
+	const leatherParams = (repeat) => ({
+		color: linear(0.34, 0.108, 0.03),
+		roughness: 0.72,
 		metalness: 0,
-		clearcoat: 0.08,
-		clearcoatRoughness: 0.3,
-		sheen: 0.25,
-		sheenRoughness: 0.55,
-		sheenColor: linear(0.5, 0.24, 0.1),
+		sheen: 0.3,
+		sheenRoughness: 0.6,
+		sheenColor: linear(0.6, 0.32, 0.16),
 		bumpMap: leatherGrainTexture(),
-		bumpScale: 1.2,
-		envMapIntensity: 1.1
+		bumpScale: 0,
+		envMapIntensity: 1.0
 	});
 	const NORMAL_BUMP = `
-		normal = perturbNormalArb( - vViewPosition, normal, vec2( dFdx( hgt ), dFdy( hgt ) ) * 2.6, faceDirection );`;
-	const THREAD = 'vec3(0.78, 0.60, 0.36)';
+		normal = perturbNormalArb( - vViewPosition, normal, vec2( dFdx( hgt ), dFdy( hgt ) ) * 3.4, faceDirection );`;
+	const THREAD = 'vec3(0.64, 0.42, 0.24)';
 
 	/* hand-finished full-grain leather. The sleeve stamps the cup's lettering into the leather where it
 	   covers the label, saddle-stitched along both edges and up the seam, with burnished rolled edges
 	   and the brand debossed on the back. */
 	const sleeve = withLabel(
-		new MeshPhysicalMaterial(leatherParams()),
+		new MeshPhysicalMaterial(leatherParams([21, 1.4])),
 		label,
 		function sleeveInject(shader) {
 			shader.uniforms.uBrand = { value: brand };
@@ -239,8 +236,9 @@ export function createMaterials() {
 					float edge = smoothstep(0.0, 0.009, min(P.y - ${SLEEVE.y0}, ${SLEEVE.y1} - P.y));
 					diffuseColor.rgb *= mix(0.5, 1.0, edge);               // burnished, darker rolled edges
 
-					float stamp = letterMask(P);                           // the cup's lettering, stamped into the leather
-					diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.26, 0.24, 0.23), stamp);
+					float stamp = letterMask(P, 0.0);                      // the cup's lettering, stamped into the leather
+					float stampSoft = letterMask(P, 1.8);                  // blurred copy: soft bevelled walls for the relief
+					diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.66, 0.54, 0.46), stamp);   // warm, compressed (darker) floor
 
 					// saddle stitching: a row along each edge and a double row up the seam
 					float yTop = ${(SLEEVE.y1 - 0.026).toFixed(4)};
@@ -249,23 +247,23 @@ export function createMaterials() {
 					Stitch s2 = stitchPick(stitchLine(P.y, arcLen, 0.0115), stitchLine(P.y, arcLen, -0.0115));
 					Stitch st = stitchPick(s1, s2);
 					float seamLine = 1.0 - smoothstep(0.0005, 0.0017, abs(arcLen));
-					diffuseColor.rgb *= 1.0 - 0.28 * st.chan - 0.4 * seamLine;
+					diffuseColor.rgb *= 1.0 - 0.36 * st.chan - 0.4 * seamLine;
 					diffuseColor.rgb *= 1.0 - 0.7 * st.hole;
-					vec3 threadCol = ${THREAD} * st.tint * (0.62 + 0.55 * st.twist) * (0.55 + 0.6 * st.shade);
+					vec3 threadCol = ${THREAD} * st.tint * (0.6 + 0.42 * st.twist) * (0.52 + 0.45 * st.shade);
 					diffuseColor.rgb = mix(diffuseColor.rgb, threadCol, st.thread);
 					float br = brandAlpha(P);
 					diffuseColor.rgb *= 1.0 - 0.7 * br;
 
 					// relief: pebbles and creases, stamped letters pressed in, round raised thread, sunk holes
-					float hgt = 0.5 * dome - 0.4 * crease + 0.03 * fineN
-						- 1.0 * stamp + 1.4 * st.thread * st.shade - 0.9 * st.hole - 0.35 * st.chan - 0.4 * seamLine
+					float hgt = 0.55 * (fbm3(P * 16.0) - 0.5) + 0.22 * (fbm3(P * 34.0) - 0.5)
+						- 2.4 * stampSoft + 1.1 * st.thread * st.shade - 0.9 * st.hole - 0.65 * st.chan - 0.4 * seamLine
 						- 0.8 * br - 0.5 * (1.0 - edge);`
 				)
 				.replace(
 					'#include <roughnessmap_fragment>',
 					`#include <roughnessmap_fragment>
-					roughnessFactor = mix(0.66, 0.4, dome) * (1.0 + 0.15 * crease);        // creases are drier, cell tops smoother
-					roughnessFactor = mix(roughnessFactor, 0.2, max(stamp, 1.0 - edge));     // burnished
+					roughnessFactor = 0.74 + 0.08 * crease - 0.05 * dome;                 // matte nubuck
+					roughnessFactor = mix(roughnessFactor, 0.42, max(stamp, 1.0 - edge));    // compressed / burnished
 					roughnessFactor = mix(roughnessFactor, 0.78, st.thread);                  // matte waxed thread`
 				)
 				.replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>' + NORMAL_BUMP);
@@ -281,7 +279,7 @@ export function createMaterials() {
 
 	/* the lid: the same hand-finished leather; a double stitched ring follows the flange as it deforms */
 	const lid = withLabel(
-		new MeshPhysicalMaterial(leatherParams()),
+		new MeshPhysicalMaterial(leatherParams([26, 1.4])),
 		label,
 		function lidInject(shader) {
 			shader.uniforms.uRing = { value: 0.452 };
@@ -298,15 +296,15 @@ export function createMaterials() {
 					Stitch st = stitchPick(stitchLine(arcLen, rad, uRing), stitchLine(arcLen, rad, uRing - 0.03));
 					diffuseColor.rgb *= 1.0 - 0.28 * st.chan;
 					diffuseColor.rgb *= 1.0 - 0.7 * st.hole;
-					vec3 threadCol = ${THREAD} * st.tint * (0.62 + 0.55 * st.twist) * (0.55 + 0.6 * st.shade);
+					vec3 threadCol = ${THREAD} * st.tint * (0.6 + 0.42 * st.twist) * (0.52 + 0.45 * st.shade);
 					diffuseColor.rgb = mix(diffuseColor.rgb, threadCol, st.thread);
-					float hgt = 0.5 * dome - 0.4 * crease + 0.03 * fineN + 1.6 * st.thread * st.shade - 0.9 * st.hole - 0.35 * st.chan;`
+					float hgt = 0.55 * (fbm3(P * 16.0) - 0.5) + 0.22 * (fbm3(P * 34.0) - 0.5) + 1.1 * st.thread * st.shade - 0.9 * st.hole - 0.65 * st.chan;`
 				)
 				.replace(
 					'#include <roughnessmap_fragment>',
 					`#include <roughnessmap_fragment>
-					roughnessFactor = mix(0.66, 0.4, dome) * (1.0 + 0.15 * crease);
-					roughnessFactor = mix(roughnessFactor, 0.78, st.thread);`
+					roughnessFactor = 0.74 + 0.08 * crease - 0.05 * dome;
+					roughnessFactor = mix(roughnessFactor, 0.8, st.thread);`
 				)
 				.replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>' + NORMAL_BUMP);
 		}

@@ -413,34 +413,15 @@ export function latheLinesTexture() {
 	return t;
 }
 
-/** Very fine micro-wrinkle bump for the leather; the pebbled grain itself is procedural (see materials.js). */
+/** A flat 4x4 bump map: it only enables the bump pipeline (perturbNormalArb); the leather relief itself comes
+    from smooth multi-octave noise in the shader, at scales a screen can actually resolve. */
 export function leatherGrainTexture() {
-	const s = 256;
 	const cv = document.createElement('canvas');
-	cv.width = cv.height = s;
+	cv.width = cv.height = 4;
 	const ctx = cv.getContext('2d');
 	ctx.fillStyle = '#808080';
-	ctx.fillRect(0, 0, s, s);
-	for (let i = 0; i < 220; i++) {
-		const g = 90 + Math.random() * 90;
-		ctx.strokeStyle = `rgba(${g},${g},${g},0.35)`;
-		ctx.lineWidth = 0.6 + Math.random() * 0.8;
-		ctx.beginPath();
-		let x = Math.random() * s;
-		let y = Math.random() * s;
-		ctx.moveTo(x, y);
-		for (let k = 0; k < 5; k++) {
-			x += (Math.random() - 0.5) * 26;
-			y += (Math.random() - 0.5) * 26;
-			ctx.lineTo(x, y);
-		}
-		ctx.stroke();
-	}
-	const t = new CanvasTexture(cv);
-	t.wrapS = t.wrapT = 1000; // RepeatWrapping
-	t.repeat.set(9, 2);
-	t.anisotropy = 8;
-	return t;
+	ctx.fillRect(0, 0, 4, 4);
+	return new CanvasTexture(cv);
 }
 
 /** Soft concentric rings for the dock glow plane (additive). */
