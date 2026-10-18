@@ -3,12 +3,9 @@
 	import { getMotion } from '$lib/motion.js';
 	import Hud from './Hud.svelte';
 	import Steam from './Steam.svelte';
+	import { mountLevo } from '$lib/three/mount.js';
 
 	let { onprogress = () => {}, onready = () => {} } = $props();
-
-	const FRAMES = 72;
-	/* document-relative, so the build works from any sub-path or static host */
-	const framePath = (i) => new URL(`frames/f${String(i).padStart(3, '0')}.webp`, document.baseURI).href;
 
 	const chapters = [
 		{
@@ -48,7 +45,7 @@
 	];
 	const AT = [0, 0.13, 0.35, 0.57, 0.79];
 
-	let stageEl, cupEl, canvasEl, floorEl, wordmarkEl, heroEl, dustEl, r1, r2, r3;
+	let stageEl, cupEl, glEl, floorEl, wordmarkEl, heroEl, dustEl, r1, r2, r3;
 	let temp = $state(22);
 	let railIndex = $state(0);
 	let isStatic = $state(false);
@@ -57,60 +54,28 @@
 		let disposed = false;
 		let ctx;
 		let cleanup = () => {};
+		let gl;
+		let stopObserving = () => {};
 
 		(async () => {
-			/* 1 ── load frames */
-			const images = new Array(FRAMES);
-			await new Promise((resolve) => {
-				let done = 0;
-				const tick = () => {
-					done++;
-					onprogress(done / FRAMES);
-					if (done === FRAMES) resolve();
-				};
-				for (let i = 0; i < FRAMES; i++) {
-					const img = new Image();
-					img.decoding = 'async';
-					img.onload = img.onerror = tick;
-					img.src = framePath(i);
-					images[i] = img;
-				}
-			});
-			if (disposed) return;
-
 			const { gsap, ScrollTrigger, reduce } = await getMotion();
 			if (disposed) return;
 			const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-			const c2d = canvasEl.getContext('2d');
 
-			/* 2 ── canvas renderer: cross-fades the two nearest frames */
-			const state = { frame: 0 };
-			const mouse = { v: 0 };
+			/* the live 3D scene (React Three Fiber island); it reads this rig every frame */
+			const rig = { frame: 0, mouse: 0, cupEl, reduce };
 			let heroWeight = 1;
-			let lastKey = -1;
-			const draw = () => {
-				let f = state.frame + mouse.v * heroWeight;
-				f = ((f % FRAMES) + FRAMES) % FRAMES;
-				const key = Math.round(f * 50);
-				if (key === lastKey) return;
-				lastKey = key;
-				const i = Math.floor(f);
-				const frac = f - i;
-				const a = images[i];
-				const b = images[(i + 1) % FRAMES];
-				c2d.clearRect(0, 0, canvasEl.width, canvasEl.height);
-				if (a?.naturalWidth) c2d.drawImage(a, 0, 0, canvasEl.width, canvasEl.height);
-				if (frac > 0.04 && b?.naturalWidth) {
-					c2d.globalAlpha = frac;
-					c2d.drawImage(b, 0, 0, canvasEl.width, canvasEl.height);
-					c2d.globalAlpha = 1;
-				}
-			};
-			draw();
+			gl = await mountLevo(glEl, rig, { onProgress: onprogress, onReady: onready });
+			if (disposed) {
+				gl.dispose();
+				return;
+			}
+			const io = new IntersectionObserver(([e]) => gl.setActive(e.isIntersecting), { rootMargin: '200px' });
+			io.observe(stageEl.parentElement);
+			stopObserving = () => io.disconnect();
 
 			if (reduce) {
 				isStatic = true;
-				onready();
 				return;
 			}
 
@@ -168,7 +133,7 @@
 					}
 				});
 
-				tl.to(state, { frame: FRAMES * 2, duration: 1 }, 0);
+				tl.to(rig, { frame: 144, duration: 1 }, 0);
 				tl.to(heroEl, { opacity: 0, y: -30, duration: 0.06, ease: 'power1.in' }, 0.015);
 				tl.to(wordmarkEl, { yPercent: -18, scale: 1.1, duration: 0.3 }, 0);
 				tl.to(wordmarkEl, { opacity: 0, duration: 0.12 }, 0.12);
@@ -198,36 +163,41 @@
 					if (!last) tl.to(el, { opacity: 0, y: -dy, duration: 0.04, ease: 'power2.in' }, AT[i + 2] - 0.065);
 				});
 
-				gsap.ticker.add(draw);
+				/* pointer: a little extra turn of the cup near the top of the page */
+				const pointer = { v: 0 };
+				const tick = () => (rig.mouse = pointer.v * heroWeight);
+				gsap.ticker.add(tick);
+				cleanup = () => gsap.ticker.remove(tick);
 				if (matchMedia('(pointer:fine)').matches) {
-					const qx = gsap.quickTo(mouse, 'v', { duration: 0.9, ease: 'power3.out' });
-					const onMove = (e) => qx((e.clientX / innerWidth - 0.5) * 5);
+					const qx = gsap.quickTo(pointer, 'v', { duration: 0.9, ease: 'power3.out' });
+					const onMove = (e) => qx((e.clientX / innerWidth - 0.5) * 0.9);
 					addEventListener('pointermove', onMove);
+					const prev = cleanup;
 					cleanup = () => {
 						removeEventListener('pointermove', onMove);
-						gsap.ticker.remove(draw);
+						prev();
 					};
-				} else cleanup = () => gsap.ticker.remove(draw);
+				}
 
 				/* intro */
 				const intro = gsap.timeline({ defaults: { ease: 'power3.out' }, delay: 0.35 });
 				intro
-					.from(canvasEl, { scale: 0.86, opacity: 0, duration: 1.6 }, 0)
+					.from(glEl, { scale: 0.94, opacity: 0, duration: 1.6 }, 0.1)
 					.from(wordmarkEl, { yPercent: 12, opacity: 0, duration: 1.6 }, 0)
 					.from('.glow', { opacity: 0, duration: 2 }, 0)
 					.from('.hero-left > *', { y: 40, opacity: 0, duration: 1.1, stagger: 0.12 }, 0.5)
 					.from('.hero-right > *', { y: 40, opacity: 0, duration: 1.1, stagger: 0.12 }, 0.7)
 					.from('.hud', { opacity: 0, x: 20, duration: 1 }, 1);
-				gsap.to(canvasEl, { y: '-1.4%', duration: 2.8, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 2 });
 			}, stageEl);
 
-			onready();
 			addEventListener('load', () => ScrollTrigger.refresh());
 		})();
 
 		return () => {
 			disposed = true;
 			cleanup();
+			stopObserving();
+			gl?.dispose();
 			ctx?.revert();
 		};
 	});
@@ -262,14 +232,14 @@
 					<circle r="82" class="r r-arc2" />
 				</g>
 			</svg>
-			<canvas
-				bind:this={canvasEl}
-				width="840"
-				height="840"
-				role="img"
-				aria-label="A champagne-titanium cup with a full-height smoked LEVO label and a glowing Thermal Halo band, levitating above a round dark dock"
-			></canvas>
 		</div>
+
+		<div
+			class="gl"
+			bind:this={glEl}
+			role="img"
+			aria-label="A champagne-titanium cup with a full-height smoked LEVO label and a glowing Thermal Halo band, levitating above a round dark dock"
+		></div>
 
 		<Hud {temp} />
 
@@ -382,7 +352,7 @@
 	}
 	.cup {
 		position: absolute;
-		z-index: 4;
+		z-index: 3;
 		left: 50%;
 		top: 50%;
 		width: min(94vw, 84vh);
@@ -390,10 +360,11 @@
 		pointer-events: none;
 		will-change: transform;
 	}
-	.cup canvas {
-		position: relative;
-		width: 100%;
-		height: 100%;
+	.gl {
+		position: absolute;
+		inset: 0;
+		z-index: 4;
+		pointer-events: none;
 	}
 	.rings {
 		position: absolute;

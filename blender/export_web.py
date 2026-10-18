@@ -1,10 +1,12 @@
-"""Turn rendered PNGs into the web assets used by the SvelteKit site.
+"""Turn the Blender hero still into the web images used by the SvelteKit site
+(hero-2000.webp for the close-up and reserve sections, og.jpg for social cards).
+The cup on the page itself is live 3D (React Three Fiber), not rendered frames.
 
 Cycles has no bloom, so a soft glow is added here: saturated, bright pixels (the
 emissive Halo band, lip and dock rings) are blurred and added back in premultiplied
 space, which also lets the glow spill onto the transparent background.
 
-    python export_web.py <frames_png_dir> <hero_png> <static_dir>
+    python export_web.py <hero_png> <static_dir>
 """
 import os
 import sys
@@ -34,14 +36,8 @@ def bloom(im: Image.Image) -> Image.Image:
 
 
 def main():
-    frames_dir, hero_png, static = sys.argv[1:4]
-    os.makedirs(os.path.join(static, "frames"), exist_ok=True)
-    for name in sorted(os.listdir(frames_dir)):
-        if name.endswith(".png"):
-            bloom(Image.open(os.path.join(frames_dir, name))).save(
-                os.path.join(static, "frames", name.replace(".png", ".webp")),
-                "WEBP", quality=86, alpha_quality=92, method=6)
-
+    hero_png, static = sys.argv[1:3]
+    os.makedirs(static, exist_ok=True)
     hero = bloom(Image.open(hero_png))
     hero.save(os.path.join(static, "hero-2000.webp"), "WEBP", quality=90, alpha_quality=95, method=6)
 
