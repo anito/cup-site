@@ -1,28 +1,39 @@
-# Ember
+# Levo
 
-A procedural Blender ceramic cup (glaze shader, gold rim, looping animation) and a scroll-driven 2D product website built from its renders.
+A levitating smart cup with a **Thermal Halo** (a fictional concept product): a procedural Blender model with custom shaders, a looping animation, and a scroll-driven SvelteKit site built from its renders.
 
 ## Original request
 
 > would you able to create a high resolution blender object including shader, animate this object within a 2D scene and create a highly profossional website from it like https://oryzo.ai/
 
-## Status
+Follow-up: reinvent the cup with a creative fictional feature and a simple, futuristic look, and port the site to SvelteKit.
 
-Work in progress. The Blender scene and site code are done; the 72 rendered frames and hero still have **not** been generated yet, so the site shows nothing until they are.
+## The product idea
+
+Levo hovers above a wireless dock on a six-millimetre magnetic cushion. Induction in its steel liner holds your drink at a chosen temperature (20–80 °C) for up to four hours, and a recessed light band, the Thermal Halo, shifts from cyan to amber so you can read the temperature at a glance. The site scrubs the cup through four chapters (Float, Halo, Hold, Rest) while a live readout climbs from 22 to 65 °C.
 
 ## Layout
 
-- `blender/build_ember.py`: builds the cup, shaders, lighting and animation with `bpy` (`pip install bpy`, Python 3.13). Modes: `build`, `test`, `frames`, `still`.
-- `blender/export_web.py`: converts rendered PNGs to the WebP assets the site uses.
-- `site/`: static site (HTML/CSS/JS, vendored GSAP, ScrollTrigger, Lenis, self-hosted fonts). Expects `site/assets/frames/f000.webp`..`f071.webp`, `site/assets/hero-2000.webp` and `site/assets/og.jpg`.
+- `blender/build_levo.py`: builds the cup, dock, procedural shaders, lighting and animation with `bpy` (`pip install bpy`, Python 3.13). Modes: `build`, `test`, `frames`, `still`.
+- `blender/export_web.py`: converts renders to WebP and adds a bloom glow around the emissive parts.
+- `src/`: SvelteKit 3 app (Svelte 5 runes, adapter-static). `src/lib/components/Stage.svelte` holds the canvas frame scrubber and the GSAP ScrollTrigger timeline.
+- `static/frames/f000..f071.webp`, `static/hero-2000.webp`, `static/og.jpg`: rendered assets used by the site.
 
-## Rendering
+## Run the site
 
 ```bash
-python blender/build_ember.py frames 72 880 28 out/frames
-python blender/build_ember.py still hero 2000 160 out/hero.png
-python blender/export_web.py out/frames out/hero.png site/assets
-cd site && python -m http.server 8000
+npm install
+npm run dev        # http://localhost:5173
+npm run build      # static output in build/ (set BASE_PATH for sub-path hosting)
+npm run preview
 ```
 
-The product is fictional; all copy is illustrative.
+## Re-render the assets
+
+```bash
+python blender/build_levo.py frames 72 840 28 out/frames
+python blender/build_levo.py still hero 2000 160 out/hero.png
+python blender/export_web.py out/frames out/hero.png static
+```
+
+Frames are 72 steps of one full turn, so the loop is seamless. The product, copy, price and sign-up form are illustrative; the form sends nothing.

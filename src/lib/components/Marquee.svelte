@@ -1,0 +1,53 @@
+<script>
+	const items = ['Magnetic levitation', 'Thermal Halo', '4-hour hold', 'Wireless dock', 'Induction liner', 'Auto-sleep'];
+</script>
+
+<div class="marquee" aria-hidden="true">
+	<div class="track">
+		{#each [0, 1] as _}
+			{#each items as t}
+				<span>{t}</span><b>◦</b>
+			{/each}
+		{/each}
+	</div>
+</div>
+
+<style>
+	.marquee {
+		position: relative;
+		z-index: 2;
+		overflow: hidden;
+		padding: 1.2rem 0;
+		background: var(--bg);
+		border-block: 1px solid var(--line);
+	}
+	.track {
+		display: flex;
+		gap: 2.4rem;
+		width: max-content;
+		animation: marq 40s linear infinite;
+		font-family: var(--display);
+		font-size: clamp(1.2rem, 2.4vw, 2rem);
+		font-weight: 300;
+		letter-spacing: -0.01em;
+		white-space: nowrap;
+		color: var(--muted);
+	}
+	.track span:nth-of-type(3n + 2) {
+		color: var(--ink);
+	}
+	.track b {
+		font-weight: 400;
+		color: var(--cyan);
+	}
+	@keyframes marq {
+		to {
+			transform: translateX(-50%);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.track {
+			animation: none;
+		}
+	}
+</style>
