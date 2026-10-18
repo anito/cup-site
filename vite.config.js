@@ -6,7 +6,6 @@ export default defineConfig({
 	plugins: [
 		sveltekit({
 			adapter: adapter(),
-			paths: { base: process.env.BASE_PATH ?? '' },
 			alias: { $lib: 'src/lib' }
 		})
 	]

@@ -1,5 +1,4 @@
 <script>
-	import { asset } from '$app/paths';
 	import { reveal } from '$lib/actions.js';
 
 	let email = $state('');
@@ -31,7 +30,7 @@
 		</div>
 		<div class="art" aria-hidden="true">
 			<div class="orb"></div>
-			<img src={asset("/hero-2000.webp")} width="1000" height="1000" loading="lazy" alt="" />
+			<img src="./hero-2000.webp" width="1000" height="1000" loading="lazy" alt="" />
 		</div>
 	</div>
 </section>
@@ -39,7 +38,6 @@
 <style>
 	.reserve {
 		padding: clamp(3rem, 6vw, 5rem) var(--gutter) clamp(5rem, 10vw, 8rem);
-		background: var(--bg);
 	}
 	.card {
 		position: relative;

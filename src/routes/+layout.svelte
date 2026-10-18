@@ -15,7 +15,7 @@
 	<meta property="og:type" content="website" />
 	<meta property="og:title" content="Levo — A cup that floats. And keeps its heat." />
 	<meta property="og:description" content="Magnetic levitation, a Thermal Halo and a four-hour temperature hold. A concept product." />
-	<meta property="og:image" content="/og.jpg" />
+	<meta property="og:image" content="og.jpg" />
 	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 

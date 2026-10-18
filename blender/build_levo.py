@@ -176,6 +176,61 @@ def build_dock(mat_body, mat_glow):
     return objs
 
 
+
+# --------------------------------------------------------------------------
+# print: vertical "LEVO" knocked out of a dark band (negative lettering)
+# --------------------------------------------------------------------------
+
+PRINT_PATH = os.path.join(HERE, "levo_print.png")
+PRINT_Z0, PRINT_Z1 = 0.47, 0.97       # vertical extent of the band on the cup (object z)
+PRINT_ARC = 0.42                      # band width measured along the surface (object units)
+PRINT_CENTER = math.radians(-70)      # object angle the band is centred on (faces camera at t=0)
+
+
+def make_print_texture(path=PRINT_PATH, w=1000, h=1190):
+    """Alpha = 1 inside the printed band, 0 where the letters are knocked out."""
+    from PIL import Image, ImageDraw
+
+    cap, stroke = 470, 66
+    widths = {"L": 190, "E": 190, "V": 236, "O": 214}
+    gap = 36
+    word = "LEVO"
+    total = sum(widths[c] for c in word) + gap * (len(word) - 1)
+
+    text = Image.new("L", (total, cap), 0)
+    d = ImageDraw.Draw(text)
+    x = 0
+    for c in word:
+        cw = widths[c]
+        if c == "L":
+            d.rectangle((x, 0, x + stroke, cap), fill=255)
+            d.rectangle((x, cap - stroke, x + cw, cap), fill=255)
+        elif c == "E":
+            d.rectangle((x, 0, x + stroke, cap), fill=255)
+            for y0 in (0, (cap - stroke) // 2, cap - stroke):
+                d.rectangle((x, y0, x + cw, y0 + stroke), fill=255)
+        elif c == "V":
+            k = stroke * 1.2
+            d.polygon([(x, 0), (x + k, 0), (x + cw / 2, cap * 0.76), (x + cw - k, 0), (x + cw, 0),
+                       (x + cw / 2 + k / 2, cap), (x + cw / 2 - k / 2, cap)], fill=255)
+        elif c == "O":
+            d.rounded_rectangle((x, 0, x + cw, cap), radius=cw // 2, fill=255)
+            d.rounded_rectangle((x + stroke, stroke, x + cw - stroke, cap - stroke),
+                                radius=max(1, cw // 2 - stroke), fill=0)
+        x += cw + gap
+
+    text = text.rotate(90, expand=True)            # reads bottom -> top, letter tops face left
+    band = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(band).rounded_rectangle((36, 36, w - 36, h - 36), radius=70, fill=255)
+    knock = Image.new("L", (w, h), 0)
+    knock.paste(text, ((w - text.width) // 2, (h - text.height) // 2))
+    alpha = Image.eval(knock, lambda v: 255 - v)
+    alpha = Image.composite(alpha, Image.new("L", (w, h), 0), band)
+    img = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    img.putalpha(alpha)
+    img.save(path)
+    return path
+
 # --------------------------------------------------------------------------
 # shaders
 # --------------------------------------------------------------------------
@@ -224,9 +279,10 @@ def noise(nt, loc, scale, detail=4.0):
 
 
 def mat_shell():
-    """Satin ceramic-composite: soft white, faint micro-texture, a hint of coat."""
+    """Satin ceramic-composite: soft white, faint micro-texture, a hint of coat,
+    with a dark printed band carrying the knocked-out vertical wordmark."""
     m, nt, out = new_material("Shell_Satin")
-    tc = nt.nodes.new("ShaderNodeTexCoord"); tc.location = (-900, 0)
+    tc = nt.nodes.new("ShaderNodeTexCoord"); tc.location = (-1500, 0)
     n = noise(nt, (-700, -200), 420.0, 5.0)
     link(nt, tc, "Object", n, "Vector")
     bump = nt.nodes.new("ShaderNodeBump"); bump.location = (-400, -200)
@@ -238,10 +294,50 @@ def mat_shell():
     col = ramp(nt, [(0.35, (0.80, 0.82, 0.86, 1)), (0.65, (0.93, 0.94, 0.96, 1))],
                "LINEAR", (-400, 100))
     link(nt, var, "Fac", col, "Fac")
+
+    # cylindrical print coordinates: u from the angle, v from z
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ"); sep.location = (-1300, -500)
+    link(nt, tc, "Object", sep, "Vector")
+    at = nt.nodes.new("ShaderNodeMath"); at.operation = "ARCTAN2"; at.location = (-1100, -450)
+    link(nt, sep, "Y", at, 0)
+    link(nt, sep, "X", at, 1)
+    sub = nt.nodes.new("ShaderNodeMath"); sub.operation = "SUBTRACT"; sub.location = (-950, -450)
+    sub.inputs[1].default_value = PRINT_CENTER
+    link(nt, at, 0, sub, 0)
+    wr = nt.nodes.new("ShaderNodeMath"); wr.operation = "WRAP"; wr.location = (-800, -450)
+    wr.inputs[1].default_value = -math.pi
+    wr.inputs[2].default_value = math.pi
+    link(nt, sub, 0, wr, 0)
+    uu = nt.nodes.new("ShaderNodeMath"); uu.operation = "MULTIPLY_ADD"; uu.location = (-650, -450)
+    uu.inputs[1].default_value = 0.40 / PRINT_ARC     # ~radius / arc width
+    uu.inputs[2].default_value = 0.5
+    link(nt, wr, 0, uu, 0)
+    vv = nt.nodes.new("ShaderNodeMath"); vv.operation = "MULTIPLY_ADD"; vv.location = (-650, -650)
+    vv.inputs[1].default_value = 1.0 / (PRINT_Z1 - PRINT_Z0)
+    vv.inputs[2].default_value = -PRINT_Z0 / (PRINT_Z1 - PRINT_Z0)
+    link(nt, sep, "Z", vv, 0)
+    cb = nt.nodes.new("ShaderNodeCombineXYZ"); cb.location = (-480, -550)
+    link(nt, uu, 0, cb, "X")
+    link(nt, vv, 0, cb, "Y")
+    img = nt.nodes.new("ShaderNodeTexImage"); img.location = (-300, -550)
+    img.image = bpy.data.images.load(make_print_texture())
+    img.interpolation = "Cubic"
+    img.extension = "CLIP"
+    link(nt, cb, "Vector", img, "Vector")
+
+    ink = nt.nodes.new("ShaderNodeMix"); ink.data_type = "RGBA"; ink.location = (0, 100)
+    ink.inputs["B"].default_value = (0.020, 0.023, 0.032, 1)
+    link(nt, col, "Color", ink, "A")
+    link(nt, img, "Alpha", ink, "Factor")
+    rough = nt.nodes.new("ShaderNodeMix"); rough.data_type = "FLOAT"; rough.location = (0, -100)
+    rough.inputs["A"].default_value = 0.40
+    rough.inputs["B"].default_value = 0.24
+    link(nt, img, "Alpha", rough, "Factor")
+
     b = nt.nodes.new("ShaderNodeBsdfPrincipled"); b.location = (400, 0)
-    link(nt, col, "Color", b, "Base Color")
+    link(nt, ink, "Result", b, "Base Color")
+    link(nt, rough, "Result", b, "Roughness")
     link(nt, bump, "Normal", b, "Normal")
-    setv(b, "Roughness", 0.40)
     setv(b, "Coat Weight", 0.25)
     setv(b, "Coat Roughness", 0.12)
     setv(b, "Subsurface Weight", 0.04)

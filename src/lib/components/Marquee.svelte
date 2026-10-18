@@ -18,7 +18,7 @@
 		z-index: 2;
 		overflow: hidden;
 		padding: 1.2rem 0;
-		background: var(--bg);
+		background: rgba(5, 7, 11, 0.55);
 		border-block: 1px solid var(--line);
 	}
 	.track {

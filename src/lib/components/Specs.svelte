@@ -32,7 +32,7 @@
 <style>
 	.specs {
 		padding: clamp(5rem, 12vw, 10rem) var(--gutter);
-		background: var(--bg-2);
+		background: rgba(10, 14, 22, 0.62);
 		border-block: 1px solid var(--line);
 	}
 	.head {

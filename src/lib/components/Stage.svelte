@@ -1,13 +1,14 @@
 <script>
 	import { onMount } from 'svelte';
-	import { asset } from '$app/paths';
 	import { getMotion } from '$lib/motion.js';
 	import Hud from './Hud.svelte';
+	import Steam from './Steam.svelte';
 
 	let { onprogress = () => {}, onready = () => {} } = $props();
 
 	const FRAMES = 72;
-	const framePath = (i) => asset(`/frames/f${String(i).padStart(3, "0")}.webp`);
+	/* document-relative, so the build works from any sub-path or static host */
+	const framePath = (i) => new URL(`frames/f${String(i).padStart(3, '0')}.webp`, document.baseURI).href;
 
 	const chapters = [
 		{
@@ -235,6 +236,7 @@
 <section class="story" id="story" aria-label="How Levo works">
 	<div class="stage" class:static={isStatic} bind:this={stageEl}>
 		<div class="glow" aria-hidden="true"></div>
+		<Steam intensity={0.26} />
 		<div class="floor" bind:this={floorEl} aria-hidden="true"></div>
 		<div class="wordmark" bind:this={wordmarkEl} aria-hidden="true">LEVO</div>
 		<div class="dust" bind:this={dustEl} aria-hidden="true">

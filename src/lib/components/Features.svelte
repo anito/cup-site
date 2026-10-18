@@ -1,5 +1,4 @@
 <script>
-	import { asset } from '$app/paths';
 	import { reveal } from '$lib/actions.js';
 
 	const features = [
@@ -39,7 +38,7 @@
 
 	<div class="grid">
 		<figure class="fig reveal" use:reveal>
-			<img src={asset("/hero-2000.webp")} width="1400" height="1400" loading="lazy" alt="Close render of the Levo cup showing the Thermal Halo band, glowing lip, steel liner and levitation dock" />
+			<img src="./hero-2000.webp" width="1400" height="1400" loading="lazy" alt="Close render of the Levo cup showing the Thermal Halo band, glowing lip, steel liner and levitation dock" />
 			{#each features as f, i}
 				<button
 					class="hotspot"
@@ -70,7 +69,6 @@
 <style>
 	.details {
 		padding: clamp(5rem, 12vw, 10rem) var(--gutter);
-		background: var(--bg);
 	}
 	.head {
 		max-width: 62rem;

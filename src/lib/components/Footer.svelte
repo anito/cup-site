@@ -8,7 +8,6 @@
 
 <style>
 	footer {
-		background: var(--bg);
 		padding: 0 var(--gutter) 2rem;
 		overflow: hidden;
 		border-top: 1px solid var(--line);
