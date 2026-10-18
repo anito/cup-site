@@ -413,32 +413,32 @@ export function latheLinesTexture() {
 	return t;
 }
 
-/** Pebbled full-grain leather for the bump map: soft rounded cells separated by fine creases. */
+/** Very fine micro-wrinkle bump for the leather; the pebbled grain itself is procedural (see materials.js). */
 export function leatherGrainTexture() {
 	const s = 256;
 	const cv = document.createElement('canvas');
 	cv.width = cv.height = s;
 	const ctx = cv.getContext('2d');
-	ctx.fillStyle = '#707070';
+	ctx.fillStyle = '#808080';
 	ctx.fillRect(0, 0, s, s);
-	for (let i = 0; i < 1500; i++) {
-		const x = Math.random() * s;
-		const y = Math.random() * s;
-		const r = 3 + Math.random() * 5;
-		for (const [ox, oy] of [[0, 0], [-s, 0], [s, 0], [0, -s], [0, s]]) {
-			const gr = ctx.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
-			gr.addColorStop(0, 'rgba(235,235,235,0.9)');
-			gr.addColorStop(0.7, 'rgba(150,150,150,0.5)');
-			gr.addColorStop(1, 'rgba(60,60,60,0)');
-			ctx.fillStyle = gr;
-			ctx.beginPath();
-			ctx.arc(x + ox, y + oy, r, 0, Math.PI * 2);
-			ctx.fill();
+	for (let i = 0; i < 220; i++) {
+		const g = 90 + Math.random() * 90;
+		ctx.strokeStyle = `rgba(${g},${g},${g},0.35)`;
+		ctx.lineWidth = 0.6 + Math.random() * 0.8;
+		ctx.beginPath();
+		let x = Math.random() * s;
+		let y = Math.random() * s;
+		ctx.moveTo(x, y);
+		for (let k = 0; k < 5; k++) {
+			x += (Math.random() - 0.5) * 26;
+			y += (Math.random() - 0.5) * 26;
+			ctx.lineTo(x, y);
 		}
+		ctx.stroke();
 	}
 	const t = new CanvasTexture(cv);
 	t.wrapS = t.wrapT = 1000; // RepeatWrapping
-	t.repeat.set(26, 5);
+	t.repeat.set(9, 2);
 	t.anisotropy = 8;
 	return t;
 }

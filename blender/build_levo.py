@@ -280,45 +280,94 @@ def add_print(nt, tc):
 
 
 STITCH_PATH = os.path.join(HERE, "levo_stitch.png")
-STITCH_ROWS = (0.848, 0.512)          # y of the two saddle-stitch rows (near the sleeve's edges)
-STITCH_PITCH = 0.02
+LID_STITCH_PATH = os.path.join(HERE, "levo_lid_stitch.png")
+STITCH_PITCH = 0.026
+STITCH_L, STITCH_SLOPE, STITCH_R = 0.0102, 0.30, 0.0027
+
+
+def _draw_stitch(thread, twist, holes, cx, cy, dx, dy, r, ss):
+    """One saddle stitch from (cx-dx, cy-dy) to (cx+dx, cy+dy): round thread (R), diagonal twist
+    hatching (B) and the punched hole at each end (G)."""
+    from PIL import ImageDraw
+    dt, dw, dh = ImageDraw.Draw(thread), ImageDraw.Draw(twist), ImageDraw.Draw(holes)
+    a, b = (cx - dx, cy - dy), (cx + dx, cy + dy)
+    for d, val in ((dt, 255), (dw, 215)):
+        d.line((*a, *b), fill=val, width=int(2 * r))
+        for p in (a, b):
+            d.ellipse((p[0] - r, p[1] - r, p[0] + r, p[1] + r), fill=val)
+    # plied-thread twist: short diagonal dark strokes across the thread
+    length = math.hypot(dx * 2, dy * 2)
+    ux, uy = dx * 2 / length, dy * 2 / length
+    nx, ny = -uy, ux
+    k = 0.0
+    while k < length:
+        px, py = a[0] + ux * k, a[1] + uy * k
+        dw.line((px - nx * r + ux * r * 0.9, py - ny * r + uy * r * 0.9, px + nx * r - ux * r * 0.9, py + ny * r - uy * r * 0.9),
+                fill=110, width=max(1, int(r * 0.45)))
+        k += r * 1.15
+    for p in (a, b):
+        hr = r * 0.95
+        dh.ellipse((p[0] - hr, p[1] - hr, p[0] + hr, p[1] + hr), fill=255)
 
 
 def make_stitch_texture(path=STITCH_PATH, w=4096, h=620):
     """Saddle stitching in cylindrical sleeve space: u = (angle + pi) / 2pi, v = (y - y0) / (y1 - y0).
-    R = thread, G = the darker hole/shadow around each stitch. Includes the vertical seam (angle 0)."""
+    R = thread, G = punched holes + pressed channel, B = thread twist shading. Includes the vertical
+    seam (angle 0). Drawn at 2x and downsampled."""
     from PIL import Image, ImageDraw, ImageFilter
 
-    thread = Image.new("L", (w, h), 0)
-    shadow = Image.new("L", (w, h), 0)
-    dt, ds = ImageDraw.Draw(thread), ImageDraw.Draw(shadow)
-    circ = 2 * math.pi * 0.40                       # sleeve circumference (object units)
-    px_per_unit_u = w / circ
-    px_per_unit_v = h / (SLEEVE_Y1 - SLEEVE_Y0)
-
-    def stitch(cx, cy, dx, dy):
-        for d, wd in ((ds, 12), (dt, 7)):
-            d.line((cx - dx, cy - dy, cx + dx, cy + dy), fill=255, width=wd)
-            r = wd // 2
-            for ex, ey in ((cx - dx, cy - dy), (cx + dx, cy + dy)):
-                d.ellipse((ex - r, ey - r, ex + r, ey + r), fill=255)
-
+    ss = 2
+    W, H = w * ss, h * ss
+    thread, twist, holes = (Image.new("L", (W, H), 0) for _ in range(3))
+    circ = 2 * math.pi * 0.40
+    ppu_u = W / circ
+    ppu_v = H / (SLEEVE_Y1 - SLEEVE_Y0)
+    L, R = STITCH_L * ppu_u, STITCH_R * ppu_u
+    ch = ImageDraw.Draw(holes)
     n_around = int(circ / STITCH_PITCH)
-    for row_y in STITCH_ROWS:
-        cy = h - (row_y - SLEEVE_Y0) * px_per_unit_v       # image y grows downwards
+    for row_y in (SLEEVE_Y1 - 0.026, SLEEVE_Y0 + 0.026):
+        cy = H - (row_y - SLEEVE_Y0) * ppu_v
+        ch.line((0, cy, W, cy), fill=90, width=int(0.003 * ppu_u))      # pressed stitch channel
         for i in range(n_around):
-            cx = (i + 0.5) * w / n_around
-            stitch(cx, cy, 10, -3)                          # slanted saddle stitch
-    # vertical seam at angle 0 (u = 0.5): two rows of slanted stitches either side
+            cx = (i + 0.5) * W / n_around
+            _draw_stitch(thread, twist, holes, cx, cy, L, -STITCH_SLOPE * L, R, ss)
     n_up = int((SLEEVE_Y1 - SLEEVE_Y0) / STITCH_PITCH)
-    for off in (-0.0105, 0.0105):
-        cx = w / 2 + off * px_per_unit_u
+    for off in (-0.0115, 0.0115):
+        cx = W / 2 + off * ppu_u
+        ch.line((cx, 0, cx, H), fill=90, width=int(0.003 * ppu_u))
         for j in range(n_up):
-            cy = (j + 0.5) * h / n_up
-            stitch(cx, cy, 3, 10)
-    shadow = shadow.filter(ImageFilter.GaussianBlur(2.5))
-    img = Image.merge("RGBA", (thread, shadow, Image.new("L", (w, h), 0), Image.new("L", (w, h), 255)))
-    img.save(path)
+            cy = (j + 0.5) * H / n_up
+            _draw_stitch(thread, twist, holes, cx, cy, STITCH_SLOPE * L, L, R, ss)
+    out = [im.resize((w, h), Image.LANCZOS) for im in (thread, holes, twist)]
+    Image.merge("RGBA", (out[0], out[1], out[2], Image.new("L", (w, h), 255))).save(path)
+    return path
+
+
+def make_lid_stitch_texture(path=LID_STITCH_PATH, size=4096, half=0.62):
+    """Two stitched rings (r = 0.53 and 0.50) for the lid, in planar space u = (x + half) / 2half."""
+    from PIL import Image, ImageDraw
+
+    ss = 2
+    S = size * ss
+    ppu = S / (2 * half)
+    thread, twist, holes = (Image.new("L", (S, S), 0) for _ in range(3))
+    ch = ImageDraw.Draw(holes)
+    L, R = STITCH_L * ppu, STITCH_R * ppu
+    for radius in (0.53, 0.50):
+        c = S / 2
+        rr = radius * ppu
+        ch.ellipse((c - rr, c - rr, c + rr, c + rr), outline=90, width=int(0.003 * ppu))
+        n = int(2 * math.pi * radius / STITCH_PITCH)
+        for i in range(n):
+            ang = 2 * math.pi * (i + 0.5) / n
+            cx, cy = c + rr * math.cos(ang), c - rr * math.sin(ang)
+            tx, ty = -math.sin(ang), -math.cos(ang)              # tangent
+            nx, ny = math.cos(ang), -math.sin(ang)               # radial
+            dx = tx * L + nx * STITCH_SLOPE * L
+            dy = ty * L + ny * STITCH_SLOPE * L
+            _draw_stitch(thread, twist, holes, cx, cy, dx, dy, R, ss)
+    out = [im.resize((size, size), Image.LANCZOS) for im in (thread, holes, twist)]
+    Image.merge("RGBA", (out[0], out[1], out[2], Image.new("L", (size, size), 255))).save(path)
     return path
 
 
@@ -439,33 +488,112 @@ def mat_shell():
 
 
 def mat_leather(sleeve=True):
-    """Hand-finished cognac leather. The sleeve version carries the cup's lettering stamped (debossed
-    and burnished) where it covers the label, saddle stitching and burnished edges; the lid is the
-    same leather without the sleeve-specific details."""
+    """Hand-finished cognac full-grain leather: domain-warped cellular pebbling with soft creases,
+    patina mottling and twisted-thread saddle stitching. The sleeve version also carries the cup's
+    lettering stamped (debossed and burnished) where it covers the label, and burnished edges."""
     m, nt, out = new_material("Sleeve_Leather" if sleeve else "Lid_Leather")
-    tc = nt.nodes.new("ShaderNodeTexCoord"); tc.location = (-1500, 0)
+    tc = nt.nodes.new("ShaderNodeTexCoord"); tc.location = (-1700, 0)
 
-    # pebbled grain + patina mottling
-    grain = noise(nt, (-900, 300), 520.0, 5.0)
-    link(nt, tc, "Object", grain, "Vector")
-    pebble = nt.nodes.new("ShaderNodeTexVoronoi"); pebble.location = (-900, 120)
-    pebble.inputs["Scale"].default_value = 260.0
-    link(nt, tc, "Object", pebble, "Vector")
-    mixh = nt.nodes.new("ShaderNodeMath"); mixh.operation = "ADD"; mixh.location = (-700, 220)
-    link(nt, grain, "Fac", mixh, 0)
-    link(nt, pebble, "Distance", mixh, 1)
-    patina = noise(nt, (-900, -60), 26.0, 5.0)
+    # warp the coordinates so the pebbles are soft and irregular
+    wn = nt.nodes.new("ShaderNodeTexNoise"); wn.location = (-1500, 300)
+    wn.inputs["Scale"].default_value = 24.0
+    link(nt, tc, "Object", wn, "Vector")
+    ws = nt.nodes.new("ShaderNodeVectorMath"); ws.operation = "SUBTRACT"; ws.location = (-1300, 300)
+    ws.inputs[1].default_value = (0.5, 0.5, 0.5)
+    link(nt, wn, "Color", ws, 0)
+    wk = nt.nodes.new("ShaderNodeVectorMath"); wk.operation = "SCALE"; wk.location = (-1150, 300)
+    wk.inputs["Scale"].default_value = 0.03
+    link(nt, ws, 0, wk, 0)
+    wv = nt.nodes.new("ShaderNodeVectorMath"); wv.operation = "ADD"; wv.location = (-1000, 300)
+    link(nt, tc, "Object", wv, 0)
+    link(nt, wk, 0, wv, 1)
+
+    cells = nt.nodes.new("ShaderNodeTexVoronoi"); cells.location = (-800, 400)
+    cells.inputs["Scale"].default_value = 36.0
+    link(nt, wv, 0, cells, "Vector")
+    edges = nt.nodes.new("ShaderNodeTexVoronoi"); edges.location = (-800, 200)
+    edges.feature = "DISTANCE_TO_EDGE"
+    edges.inputs["Scale"].default_value = 36.0
+    link(nt, wv, 0, edges, "Vector")
+    dome = nt.nodes.new("ShaderNodeMapRange"); dome.location = (-550, 400)
+    dome.inputs["From Min"].default_value = 0.0
+    dome.inputs["From Max"].default_value = 0.8
+    dome.inputs["To Min"].default_value = 1.0
+    dome.inputs["To Max"].default_value = 0.0
+    link(nt, cells, "Distance", dome, "Value")
+    crease = nt.nodes.new("ShaderNodeMapRange"); crease.location = (-550, 200)
+    crease.inputs["From Min"].default_value = 0.0
+    crease.inputs["From Max"].default_value = 0.22
+    crease.inputs["To Min"].default_value = 1.0
+    crease.inputs["To Max"].default_value = 0.0
+    link(nt, edges, "Distance", crease, "Value")
+
+    # relief height: 0.5*dome - 0.4*crease
+    h0 = nt.nodes.new("ShaderNodeMath"); h0.operation = "MULTIPLY"; h0.inputs[1].default_value = 0.5
+    link(nt, dome, "Result", h0, 0)
+    h1 = nt.nodes.new("ShaderNodeMath"); h1.operation = "MULTIPLY_ADD"; h1.inputs[1].default_value = -0.4
+    link(nt, crease, "Result", h1, 0)
+    link(nt, h0, 0, h1, 2)
+    height_out = h1
+
+    patina = noise(nt, (-900, -60), 18.0, 5.0)
     link(nt, tc, "Object", patina, "Vector")
     col = ramp(nt, [(0.25, (0.20, 0.052, 0.014, 1)), (0.55, (0.32, 0.100, 0.028, 1)),
                     (0.85, (0.42, 0.150, 0.045, 1))], "LINEAR", (-600, -60))
     link(nt, patina, "Fac", col, "Fac")
-    color_out, color_sock = col, "Color"
-    height_out = mixh                                  # bump height source
+    # crease darkening (multiply by 1 - 0.2*crease) and per-cell tint
+    cd = nt.nodes.new("ShaderNodeMath"); cd.operation = "MULTIPLY_ADD"; cd.inputs[1].default_value = -0.2
+    cd.inputs[2].default_value = 1.0
+    link(nt, crease, "Result", cd, 0)
+    cc = nt.nodes.new("ShaderNodeCombineColor"); cc.location = (-300, -150)
+    for ch in ("Red", "Green", "Blue"):
+        link(nt, cd, 0, cc, ch)
+    grain_col = nt.nodes.new("ShaderNodeMix"); grain_col.data_type = "RGBA"; grain_col.blend_type = "MULTIPLY"
+    grain_col.location = (-100, -60)
+    grain_col.inputs["Factor"].default_value = 1.0
+    link(nt, col, "Color", grain_col, "A")
+    link(nt, cc, "Color", grain_col, "B")
+    color_out, color_sock = grain_col, "Result"
 
-    normal_src = None
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ"); sep.location = (-1300, -500)
+    link(nt, tc, "Object", sep, "Vector")
+
+    def stitch_layer(img_node, prev_node, prev_sock, height_node):
+        """Lay a stitch texture (R thread, G holes/channel, B twist) over the colour and the relief."""
+        sc = nt.nodes.new("ShaderNodeSeparateColor")
+        link(nt, img_node, "Color", sc, "Color")
+        hole_dark = nt.nodes.new("ShaderNodeMix"); hole_dark.data_type = "RGBA"
+        hole_dark.inputs["B"].default_value = (0.012, 0.005, 0.002, 1)
+        link(nt, prev_node, prev_sock, hole_dark, "A")
+        hm = nt.nodes.new("ShaderNodeMath"); hm.operation = "MULTIPLY"; hm.inputs[1].default_value = 0.8
+        link(nt, sc, "Green", hm, 0)
+        link(nt, hm, 0, hole_dark, "Factor")
+        tw = nt.nodes.new("ShaderNodeMath"); tw.operation = "MULTIPLY_ADD"
+        tw.inputs[1].default_value = 0.95
+        tw.inputs[2].default_value = 0.35
+        link(nt, sc, "Blue", tw, 0)
+        twc = nt.nodes.new("ShaderNodeCombineColor")
+        for ch in ("Red", "Green", "Blue"):
+            link(nt, tw, 0, twc, ch)
+        tcol = nt.nodes.new("ShaderNodeMix"); tcol.data_type = "RGBA"; tcol.blend_type = "MULTIPLY"
+        tcol.inputs["Factor"].default_value = 1.0
+        tcol.inputs["A"].default_value = (0.58, 0.36, 0.15, 1)
+        link(nt, twc, "Color", tcol, "B")
+        thr = nt.nodes.new("ShaderNodeMix"); thr.data_type = "RGBA"
+        link(nt, hole_dark, "Result", thr, "A")
+        link(nt, tcol, "Result", thr, "B")
+        link(nt, sc, "Red", thr, "Factor")
+        # relief: thread raised, holes sunk
+        r1 = nt.nodes.new("ShaderNodeMath"); r1.operation = "MULTIPLY_ADD"; r1.inputs[1].default_value = 1.4
+        link(nt, sc, "Red", r1, 0)
+        link(nt, height_node, 0, r1, 2)
+        r2 = nt.nodes.new("ShaderNodeMath"); r2.operation = "MULTIPLY_ADD"; r2.inputs[1].default_value = -0.7
+        link(nt, sc, "Green", r2, 0)
+        link(nt, r1, 0, r2, 2)
+        return thr, "Result", r2
+
     if sleeve:
         img, uu = add_print_u(nt, tc)
-        # letters = knocked-out parts of the label, only inside the strip's width
         ge = nt.nodes.new("ShaderNodeMath"); ge.operation = "GREATER_THAN"; ge.inputs[1].default_value = 0.033
         le = nt.nodes.new("ShaderNodeMath"); le.operation = "LESS_THAN"; le.inputs[1].default_value = 0.967
         link(nt, uu, 0, ge, 0)
@@ -479,9 +607,7 @@ def mat_leather(sleeve=True):
         link(nt, inv, 0, letters, 0)
         link(nt, strip, 0, letters, 1)
 
-        # stitching texture (R = thread, G = hole shadow)
-        sep = nt.nodes.new("ShaderNodeSeparateXYZ")
-        link(nt, tc, "Object", sep, "Vector")
+        # cylindrical stitch coordinates
         at = nt.nodes.new("ShaderNodeMath"); at.operation = "ARCTAN2"
         link(nt, sep, "Y", at, 0)
         link(nt, sep, "X", at, 1)
@@ -501,54 +627,49 @@ def mat_leather(sleeve=True):
         st.image.colorspace_settings.name = "Non-Color"
         st.extension = "REPEAT"
         link(nt, cb, "Vector", st, "Vector")
-        stsep = nt.nodes.new("ShaderNodeSeparateColor"); stsep.location = (-100, -550)
-        link(nt, st, "Color", stsep, "Color")
 
-        # stamped letters: burnished dark, debossed
+        # stamped letters: burnished dark, pressed in
         dark = nt.nodes.new("ShaderNodeMix"); dark.data_type = "RGBA"; dark.location = (150, 60)
         dark.inputs["B"].default_value = (0.018, 0.007, 0.003, 1)
         link(nt, color_out, color_sock, dark, "A")
         lm = nt.nodes.new("ShaderNodeMath"); lm.operation = "MULTIPLY"; lm.inputs[1].default_value = 0.85
         link(nt, letters, 0, lm, 0)
         link(nt, lm, 0, dark, "Factor")
-        # thread over everything
-        thr = nt.nodes.new("ShaderNodeMix"); thr.data_type = "RGBA"; thr.location = (350, 60)
-        thr.inputs["B"].default_value = (0.62, 0.42, 0.22, 1)
-        link(nt, dark, "Result", thr, "A")
-        link(nt, stsep, "Red", thr, "Factor")
-        color_out, color_sock = thr, "Result"
-
-        # bump: grain, letters pressed in, thread raised, holes sunk
-        h1 = nt.nodes.new("ShaderNodeMath"); h1.operation = "MULTIPLY_ADD"
-        h1.inputs[1].default_value = -3.0
-        link(nt, letters, 0, h1, 0)
-        h1.inputs[2].default_value = 0.0
-        h2 = nt.nodes.new("ShaderNodeMath"); h2.operation = "MULTIPLY_ADD"
-        h2.inputs[1].default_value = 2.0
-        link(nt, stsep, "Red", h2, 0)
-        link(nt, h1, 0, h2, 2)
-        h3 = nt.nodes.new("ShaderNodeMath"); h3.operation = "MULTIPLY_ADD"
-        h3.inputs[1].default_value = -0.8
-        link(nt, stsep, "Green", h3, 0)
-        link(nt, h2, 0, h3, 2)
-        h4 = nt.nodes.new("ShaderNodeMath"); h4.operation = "MULTIPLY_ADD"
-        h4.inputs[1].default_value = 0.25
-        link(nt, mixh, 0, h4, 0)
-        link(nt, h3, 0, h4, 2)
-        height_out = h4
+        hl = nt.nodes.new("ShaderNodeMath"); hl.operation = "MULTIPLY_ADD"; hl.inputs[1].default_value = -3.0
+        link(nt, letters, 0, hl, 0)
+        link(nt, height_out, 0, hl, 2)
+        color_out, color_sock, height_out = stitch_layer(st, dark, "Result", hl)
+    else:
+        mul = nt.nodes.new("ShaderNodeMath"); mul.operation = "MULTIPLY_ADD"
+        mul.inputs[1].default_value = 1.0 / 1.24
+        mul.inputs[2].default_value = 0.5
+        link(nt, sep, "X", mul, 0)
+        mv = nt.nodes.new("ShaderNodeMath"); mv.operation = "MULTIPLY_ADD"
+        mv.inputs[1].default_value = 1.0 / 1.24
+        mv.inputs[2].default_value = 0.5
+        link(nt, sep, "Y", mv, 0)
+        cb = nt.nodes.new("ShaderNodeCombineXYZ")
+        link(nt, mul, 0, cb, "X")
+        link(nt, mv, 0, cb, "Y")
+        st = nt.nodes.new("ShaderNodeTexImage"); st.location = (-300, -550)
+        st.image = bpy.data.images.load(make_lid_stitch_texture())
+        st.image.colorspace_settings.name = "Non-Color"
+        st.extension = "CLIP"
+        link(nt, cb, "Vector", st, "Vector")
+        color_out, color_sock, height_out = stitch_layer(st, color_out, color_sock, height_out)
 
     bump = nt.nodes.new("ShaderNodeBump"); bump.location = (350, 250)
-    bump.inputs["Strength"].default_value = 0.6
-    bump.inputs["Distance"].default_value = 0.0035
+    bump.inputs["Strength"].default_value = 0.55
+    bump.inputs["Distance"].default_value = 0.004
     link(nt, height_out, 0, bump, "Height")
 
     b = nt.nodes.new("ShaderNodeBsdfPrincipled"); b.location = (700, 0)
     link(nt, color_out, color_sock, b, "Base Color")
     link(nt, bump, "Normal", b, "Normal")
-    setv(b, "Roughness", 0.46)
-    setv(b, "Coat Weight", 0.07)
-    setv(b, "Coat Roughness", 0.25)
-    setv(b, "Sheen Weight", 0.12)
+    setv(b, "Roughness", 0.5)
+    setv(b, "Coat Weight", 0.08)
+    setv(b, "Coat Roughness", 0.28)
+    setv(b, "Sheen Weight", 0.15)
     link(nt, b, "BSDF", out, "Surface")
     return m
 
