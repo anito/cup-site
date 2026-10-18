@@ -267,7 +267,7 @@
 				width="840"
 				height="840"
 				role="img"
-				aria-label="A satin-white cup with a glowing Thermal Halo band, levitating above a round dark dock"
+				aria-label="A champagne-titanium cup with a full-height smoked LEVO label and a glowing Thermal Halo band, levitating above a round dark dock"
 			></canvas>
 		</div>
 

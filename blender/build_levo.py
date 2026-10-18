@@ -1,7 +1,7 @@
 """
 Levo - a levitating cup with a "Thermal Halo" (fictional product).
 
-Builds, in Blender (bpy): a minimal satin-white cup with a recessed light band that
+Builds, in Blender (bpy): a minimal anodised-titanium cup with a full-height smoked label and a recessed light band that
 shifts from cool cyan to hot amber around its body, a glowing lip, a dark glass dock
 with light rings, studio lighting, and a looping hover/rotate animation. Can render
 frames and stills.
@@ -27,7 +27,7 @@ TARGET_Z = 0.50
 CAM_DIST = 5.2
 CAM_FOCAL = 85
 
-# slots: 0 satin shell, 1 steel liner, 2 halo glow
+# slots: 0 titanium shell, 1 steel liner, 2 halo glow
 PROFILE = [
     (0.000, 0.040),
     (0.300, 0.040),
@@ -182,18 +182,18 @@ def build_dock(mat_body, mat_glow):
 # --------------------------------------------------------------------------
 
 PRINT_PATH = os.path.join(HERE, "levo_print.png")
-PRINT_Z0, PRINT_Z1 = 0.47, 0.97       # vertical extent of the band on the cup (object z)
-PRINT_ARC = 0.42                      # band width measured along the surface (object units)
-PRINT_CENTER = math.radians(-70)      # object angle the band is centred on (faces camera at t=0)
+PRINT_Z0, PRINT_Z1 = 0.09, 0.97       # the label spans (almost) the full body height
+PRINT_ARC = 0.34                      # label width measured along the surface (object units)
+PRINT_CENTER = math.radians(-70)      # object angle the label is centred on (faces camera at t=0)
 
 
-def make_print_texture(path=PRINT_PATH, w=1000, h=1190):
-    """Alpha = 1 inside the printed band, 0 where the letters are knocked out."""
+def make_print_texture(path=PRINT_PATH, w=695, h=1800):
+    """Alpha = 1 inside the label, 0 where the letters are knocked out."""
     from PIL import Image, ImageDraw
 
-    cap, stroke = 470, 66
-    widths = {"L": 190, "E": 190, "V": 236, "O": 214}
-    gap = 36
+    cap, stroke = 500, 84
+    widths = {"L": 290, "E": 290, "V": 350, "O": 320}
+    gap = 52
     word = "LEVO"
     total = sum(widths[c] for c in word) + gap * (len(word) - 1)
 
@@ -210,8 +210,8 @@ def make_print_texture(path=PRINT_PATH, w=1000, h=1190):
             for y0 in (0, (cap - stroke) // 2, cap - stroke):
                 d.rectangle((x, y0, x + cw, y0 + stroke), fill=255)
         elif c == "V":
-            k = stroke * 1.2
-            d.polygon([(x, 0), (x + k, 0), (x + cw / 2, cap * 0.76), (x + cw - k, 0), (x + cw, 0),
+            k = stroke * 1.25
+            d.polygon([(x, 0), (x + k, 0), (x + cw / 2, cap * 0.78), (x + cw - k, 0), (x + cw, 0),
                        (x + cw / 2 + k / 2, cap), (x + cw / 2 - k / 2, cap)], fill=255)
         elif c == "O":
             d.rounded_rectangle((x, 0, x + cw, cap), radius=cw // 2, fill=255)
@@ -220,16 +220,65 @@ def make_print_texture(path=PRINT_PATH, w=1000, h=1190):
         x += cw + gap
 
     text = text.rotate(90, expand=True)            # reads bottom -> top, letter tops face left
-    band = Image.new("L", (w, h), 0)
-    ImageDraw.Draw(band).rounded_rectangle((36, 36, w - 36, h - 36), radius=70, fill=255)
+    label = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(label).rounded_rectangle((20, 20, w - 20, h - 20), radius=64, fill=255)
     knock = Image.new("L", (w, h), 0)
     knock.paste(text, ((w - text.width) // 2, (h - text.height) // 2))
     alpha = Image.eval(knock, lambda v: 255 - v)
-    alpha = Image.composite(alpha, Image.new("L", (w, h), 0), band)
+    alpha = Image.composite(alpha, Image.new("L", (w, h), 0), label)
     img = Image.new("RGBA", (w, h), (255, 255, 255, 0))
     img.putalpha(alpha)
     img.save(path)
     return path
+
+
+def add_print(nt, tc):
+    """Cylindrical label mapping from object coords; returns the Image Texture node.
+    u = angle * radius / width keeps the label a constant width on the tapered body."""
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ"); sep.location = (-1300, -500)
+    link(nt, tc, "Object", sep, "Vector")
+    at = nt.nodes.new("ShaderNodeMath"); at.operation = "ARCTAN2"; at.location = (-1100, -450)
+    link(nt, sep, "Y", at, 0)
+    link(nt, sep, "X", at, 1)
+    sub = nt.nodes.new("ShaderNodeMath"); sub.operation = "SUBTRACT"; sub.location = (-950, -450)
+    sub.inputs[1].default_value = PRINT_CENTER
+    link(nt, at, 0, sub, 0)
+    wr = nt.nodes.new("ShaderNodeMath"); wr.operation = "WRAP"; wr.location = (-800, -450)
+    wr.inputs[1].default_value = -math.pi
+    wr.inputs[2].default_value = math.pi
+    link(nt, sub, 0, wr, 0)
+    rad = nt.nodes.new("ShaderNodeMath"); rad.operation = "POWER"; rad.location = (-1100, -650)
+    xx = nt.nodes.new("ShaderNodeMath"); xx.operation = "POWER"; xx.inputs[1].default_value = 2.0
+    yy = nt.nodes.new("ShaderNodeMath"); yy.operation = "POWER"; yy.inputs[1].default_value = 2.0
+    xx.location = (-1250, -650); yy.location = (-1250, -750)
+    link(nt, sep, "X", xx, 0)
+    link(nt, sep, "Y", yy, 0)
+    ad = nt.nodes.new("ShaderNodeMath"); ad.operation = "ADD"; ad.location = (-1100, -700)
+    link(nt, xx, 0, ad, 0)
+    link(nt, yy, 0, ad, 1)
+    sq = nt.nodes.new("ShaderNodeMath"); sq.operation = "SQRT"; sq.location = (-950, -700)
+    link(nt, ad, 0, sq, 0)
+    arc = nt.nodes.new("ShaderNodeMath"); arc.operation = "MULTIPLY"; arc.location = (-800, -600)
+    link(nt, wr, 0, arc, 0)
+    link(nt, sq, 0, arc, 1)
+    uu = nt.nodes.new("ShaderNodeMath"); uu.operation = "MULTIPLY_ADD"; uu.location = (-650, -600)
+    uu.inputs[1].default_value = 1.0 / PRINT_ARC
+    uu.inputs[2].default_value = 0.5
+    link(nt, arc, 0, uu, 0)
+    vv = nt.nodes.new("ShaderNodeMath"); vv.operation = "MULTIPLY_ADD"; vv.location = (-650, -800)
+    vv.inputs[1].default_value = 1.0 / (PRINT_Z1 - PRINT_Z0)
+    vv.inputs[2].default_value = -PRINT_Z0 / (PRINT_Z1 - PRINT_Z0)
+    link(nt, sep, "Z", vv, 0)
+    cb = nt.nodes.new("ShaderNodeCombineXYZ"); cb.location = (-480, -700)
+    link(nt, uu, 0, cb, "X")
+    link(nt, vv, 0, cb, "Y")
+    img = nt.nodes.new("ShaderNodeTexImage"); img.location = (-300, -700)
+    img.image = bpy.data.images.load(make_print_texture())
+    img.interpolation = "Cubic"
+    img.extension = "CLIP"
+    link(nt, cb, "Vector", img, "Vector")
+    return img
+
 
 # --------------------------------------------------------------------------
 # shaders
@@ -279,68 +328,70 @@ def noise(nt, loc, scale, detail=4.0):
 
 
 def mat_shell():
-    """Satin ceramic-composite: soft white, faint micro-texture, a hint of coat,
-    with a dark printed band carrying the knocked-out vertical wordmark."""
-    m, nt, out = new_material("Shell_Satin")
+    """Bead-blasted, anodised titanium with fine lathe lines (anisotropic), carrying a
+    smoked-glass label: opaque enough to read on the body, translucent over the halo."""
+    m, nt, out = new_material("Shell_Titanium")
     tc = nt.nodes.new("ShaderNodeTexCoord"); tc.location = (-1500, 0)
-    n = noise(nt, (-700, -200), 420.0, 5.0)
-    link(nt, tc, "Object", n, "Vector")
-    bump = nt.nodes.new("ShaderNodeBump"); bump.location = (-400, -200)
-    bump.inputs["Strength"].default_value = 0.035
-    bump.inputs["Distance"].default_value = 0.004
-    link(nt, n, "Fac", bump, "Height")
-    var = noise(nt, (-700, 100), 2.0, 3.0)
-    link(nt, tc, "Object", var, "Vector")
-    col = ramp(nt, [(0.35, (0.80, 0.82, 0.86, 1)), (0.65, (0.93, 0.94, 0.96, 1))],
-               "LINEAR", (-400, 100))
-    link(nt, var, "Fac", col, "Fac")
 
-    # cylindrical print coordinates: u from the angle, v from z
-    sep = nt.nodes.new("ShaderNodeSeparateXYZ"); sep.location = (-1300, -500)
-    link(nt, tc, "Object", sep, "Vector")
-    at = nt.nodes.new("ShaderNodeMath"); at.operation = "ARCTAN2"; at.location = (-1100, -450)
-    link(nt, sep, "Y", at, 0)
-    link(nt, sep, "X", at, 1)
-    sub = nt.nodes.new("ShaderNodeMath"); sub.operation = "SUBTRACT"; sub.location = (-950, -450)
-    sub.inputs[1].default_value = PRINT_CENTER
-    link(nt, at, 0, sub, 0)
-    wr = nt.nodes.new("ShaderNodeMath"); wr.operation = "WRAP"; wr.location = (-800, -450)
-    wr.inputs[1].default_value = -math.pi
-    wr.inputs[2].default_value = math.pi
-    link(nt, sub, 0, wr, 0)
-    uu = nt.nodes.new("ShaderNodeMath"); uu.operation = "MULTIPLY_ADD"; uu.location = (-650, -450)
-    uu.inputs[1].default_value = 0.40 / PRINT_ARC     # ~radius / arc width
-    uu.inputs[2].default_value = 0.5
-    link(nt, wr, 0, uu, 0)
-    vv = nt.nodes.new("ShaderNodeMath"); vv.operation = "MULTIPLY_ADD"; vv.location = (-650, -650)
-    vv.inputs[1].default_value = 1.0 / (PRINT_Z1 - PRINT_Z0)
-    vv.inputs[2].default_value = -PRINT_Z0 / (PRINT_Z1 - PRINT_Z0)
-    link(nt, sep, "Z", vv, 0)
-    cb = nt.nodes.new("ShaderNodeCombineXYZ"); cb.location = (-480, -550)
-    link(nt, uu, 0, cb, "X")
-    link(nt, vv, 0, cb, "Y")
-    img = nt.nodes.new("ShaderNodeTexImage"); img.location = (-300, -550)
-    img.image = bpy.data.images.load(make_print_texture())
-    img.interpolation = "Cubic"
-    img.extension = "CLIP"
-    link(nt, cb, "Vector", img, "Vector")
+    # lathe lines: 1-D noise in z only, plus a fine blasted grain
+    sepz = nt.nodes.new("ShaderNodeSeparateXYZ"); sepz.location = (-1300, 300)
+    link(nt, tc, "Object", sepz, "Vector")
+    lines_v = nt.nodes.new("ShaderNodeCombineXYZ"); lines_v.location = (-1100, 300)
+    link(nt, sepz, "Z", lines_v, "X")
+    lines = noise(nt, (-900, 300), 520.0, 2.0)
+    link(nt, lines_v, "Vector", lines, "Vector")
+    grain = noise(nt, (-900, 120), 900.0, 3.0)
+    link(nt, tc, "Object", grain, "Vector")
+    mixb = nt.nodes.new("ShaderNodeMath"); mixb.operation = "ADD"; mixb.location = (-700, 220)
+    mixb.use_clamp = False
+    link(nt, lines, "Fac", mixb, 0)
+    link(nt, grain, "Fac", mixb, 1)
+    bump = nt.nodes.new("ShaderNodeBump"); bump.location = (-500, 220)
+    bump.inputs["Strength"].default_value = 0.06
+    bump.inputs["Distance"].default_value = 0.0015
+    link(nt, mixb, 0, bump, "Height")
 
-    ink = nt.nodes.new("ShaderNodeMix"); ink.data_type = "RGBA"; ink.location = (0, 100)
-    ink.inputs["B"].default_value = (0.020, 0.023, 0.032, 1)
+    tint = noise(nt, (-900, -120), 2.2, 4.0)
+    link(nt, tc, "Object", tint, "Vector")
+    col = ramp(nt, [(0.35, (0.74, 0.60, 0.44, 1)), (0.65, (0.86, 0.72, 0.54, 1))],
+               "LINEAR", (-500, 20))
+    link(nt, tint, "Fac", col, "Fac")
+
+    img = add_print(nt, tc)
+
+    ink = nt.nodes.new("ShaderNodeMix"); ink.data_type = "RGBA"; ink.location = (-100, 80)
+    ink.inputs["B"].default_value = (0.004, 0.005, 0.008, 1)
     link(nt, col, "Color", ink, "A")
-    link(nt, img, "Alpha", ink, "Factor")
-    rough = nt.nodes.new("ShaderNodeMix"); rough.data_type = "FLOAT"; rough.location = (0, -100)
-    rough.inputs["A"].default_value = 0.40
-    rough.inputs["B"].default_value = 0.24
-    link(nt, img, "Alpha", rough, "Factor")
+    k = nt.nodes.new("ShaderNodeMath"); k.operation = "MULTIPLY"; k.location = (-300, -60)
+    k.inputs[1].default_value = 0.93
+    link(nt, img, "Alpha", k, 0)
+    link(nt, k, 0, ink, "Factor")
+    metal = nt.nodes.new("ShaderNodeMath"); metal.operation = "SUBTRACT"; metal.location = (-100, -80)
+    metal.inputs[0].default_value = 1.0
+    link(nt, k, 0, metal, 1)
+    rough = nt.nodes.new("ShaderNodeMix"); rough.data_type = "FLOAT"; rough.location = (-100, -220)
+    rough.inputs["A"].default_value = 0.44
+    rough.inputs["B"].default_value = 0.46
+    link(nt, k, 0, rough, "Factor")
 
-    b = nt.nodes.new("ShaderNodeBsdfPrincipled"); b.location = (400, 0)
+    spec = nt.nodes.new("ShaderNodeMix"); spec.data_type = "FLOAT"; spec.location = (100, -380)
+    spec.inputs["A"].default_value = 0.35
+    spec.inputs["B"].default_value = 0.04          # matte-black print barely reflects
+    link(nt, k, 0, spec, "Factor")
+
+    tan = nt.nodes.new("ShaderNodeTangent"); tan.location = (100, -260)
+    tan.direction_type = "RADIAL"
+    tan.axis = "Z"
+
+    b = nt.nodes.new("ShaderNodeBsdfPrincipled"); b.location = (450, 0)
     link(nt, ink, "Result", b, "Base Color")
+    link(nt, metal, 0, b, "Metallic")
     link(nt, rough, "Result", b, "Roughness")
     link(nt, bump, "Normal", b, "Normal")
-    setv(b, "Coat Weight", 0.25)
-    setv(b, "Coat Roughness", 0.12)
-    setv(b, "Subsurface Weight", 0.04)
+    link(nt, tan, "Tangent", b, "Tangent")
+    setv(b, "Anisotropic", 0.65)
+    link(nt, spec, "Result", b, "Specular IOR Level")
+    setv(b, "Coat Weight", 0.0)
     link(nt, b, "BSDF", out, "Surface")
     return m
 
@@ -387,8 +438,15 @@ def mat_halo():
                   (0.65, (1.00, 0.30, 0.45, 1)),
                   (1.00, (1.00, 0.62, 0.10, 1))], "LINEAR", (-200, 0))
     link(nt, dv, 0, r, "Fac")
+    img = add_print(nt, tc)
+    dim = nt.nodes.new("ShaderNodeMath"); dim.operation = "MULTIPLY_ADD"; dim.location = (-100, -250)
+    dim.inputs[1].default_value = -0.66           # label dims the ring to ~34% ...
+    dim.inputs[2].default_value = 4.2             # ... of full strength; letters show it fully
+    # strength = 3.2 * (1 - 0.66*alpha)  ->  alpha*(-0.66*3.2) + 3.2
+    dim.inputs[1].default_value = -0.66 * 4.2
+    link(nt, img, "Alpha", dim, 0)
     e = nt.nodes.new("ShaderNodeEmission"); e.location = (200, 0)
-    e.inputs["Strength"].default_value = 3.2
+    link(nt, dim, 0, e, "Strength")
     link(nt, r, "Color", e, "Color")
     link(nt, e, "Emission", out, "Surface")
     return m
@@ -398,7 +456,7 @@ def mat_dock_glow():
     m, nt, out = new_material("Dock_Glow")
     e = nt.nodes.new("ShaderNodeEmission"); e.location = (0, 0)
     e.inputs["Color"].default_value = (0.20, 0.72, 1.0, 1)
-    e.inputs["Strength"].default_value = 2.8
+    e.inputs["Strength"].default_value = 3.6
     link(nt, e, "Emission", out, "Surface")
     return m
 
@@ -445,7 +503,7 @@ def build_world(scene):
         nt.nodes.remove(n)
     out = nt.nodes.new("ShaderNodeOutputWorld"); out.location = (600, 0)
     bg = nt.nodes.new("ShaderNodeBackground"); bg.location = (400, 0)
-    bg.inputs["Strength"].default_value = 0.6
+    bg.inputs["Strength"].default_value = 1.1
     geo = nt.nodes.new("ShaderNodeNewGeometry"); geo.location = (-800, 0)
     sep = nt.nodes.new("ShaderNodeSeparateXYZ"); sep.location = (-600, 0)
     link(nt, geo, "Incoming", sep, "Vector")
@@ -484,6 +542,9 @@ def build_rig(scene):
     area("RimCyan", (3.6, 3.0, 2.2), 0.7, 650, (0.35, 0.78, 1.0), size_y=3.6)
     area("RimViolet", (-3.8, 2.4, 2.0), 0.7, 520, (0.62, 0.45, 1.0), size_y=3.4)
     area("Fill", (3.4, -3.4, 1.0), 3.0, 70, (0.85, 0.90, 1.0))
+    # tall strip softboxes: long vertical highlights are what make machined metal read as premium
+    area("StripL", (-3.4, -2.4, 1.0), 0.55, 700, (1.0, 0.97, 0.92), size_y=4.2)
+    area("StripR", (3.2, -2.8, 1.0), 0.45, 520, (0.92, 0.96, 1.0), size_y=4.2)
 
     cam_data = bpy.data.cameras.new("Cam")
     cam_data.lens = CAM_FOCAL
@@ -542,7 +603,7 @@ def configure_render(scene, px, samples):
     scene.render.image_settings.color_mode = "RGBA"
     scene.render.image_settings.color_depth = "8"
     scene.view_settings.view_transform = "Standard"
-    scene.view_settings.exposure = -0.9
+    scene.view_settings.exposure = -1.2
 
 
 def build():
