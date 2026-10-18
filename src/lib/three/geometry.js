@@ -221,30 +221,67 @@ export function sleeve() {
 	return latheProfile(profile, new Array(profile.length - 1).fill(0), { segments: 256, passes: 1 }).geometry;
 }
 
-/* The lid is also the coaster: its glass underside (y = 0) becomes the coaster top when flipped. */
-const LID_PROFILE = [
+/* The lid is also the coaster, and it deforms between the two. Both shapes share one topology so
+   they can be blended with a morph target (influence 0 = capping lid, 1 = flat coaster slab).
+   y = 0 is the contact plane: the lid's roof rests on the cup's lip, its skirt wraps the outside
+   of the rim and its plug sits just inside the mouth; as a coaster that face becomes the flat top. */
+const LID_CAP = [
 	[0.0, 0.0],
 	[0.2, 0.0],
-	[0.38, 0.0],
-	[0.5, 0.0],
-	[0.545, 0.003],
-	[0.575, 0.015], // rounded flange edge
-	[0.575, 0.05],
-	[0.545, 0.066],
-	[0.44, 0.066], // flange top
-	[0.405, 0.075],
-	[0.395, 0.15], // raised plateau
-	[0.375, 0.17],
-	[0.33, 0.17],
-	[0.32, 0.155], // recessed sip deck
-	[0.0, 0.155]
+	[0.35, 0.0],
+	[0.366, -0.02], // plug ring (inside the cup mouth)
+	[0.366, -0.05],
+	[0.382, -0.05],
+	[0.382, -0.004],
+	[0.434, 0.0], // roof over the lip
+	[0.437, -0.02], // skirt inner wall, hugging the outside of the rim
+	[0.437, -0.046],
+	[0.452, -0.052],
+	[0.471, -0.03],
+	[0.475, 0.012], // skirt outer wall rising into the flange
+	[0.468, 0.04],
+	[0.44, 0.052],
+	[0.405, 0.07], // raised plateau
+	[0.395, 0.13],
+	[0.378, 0.148],
+	[0.33, 0.148],
+	[0.318, 0.134], // recessed sip deck
+	[0.0, 0.134]
 ];
-const LID_SLOTS = [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // 0 soft-touch top, 1 glass underside
+const LID_FLAT = [
+	[0.0, 0.0],
+	[0.2, 0.0],
+	[0.35, 0.0],
+	[0.39, 0.0],
+	[0.43, 0.0],
+	[0.47, 0.0],
+	[0.5, 0.0],
+	[0.53, 0.002],
+	[0.555, 0.01],
+	[0.57, 0.025],
+	[0.575, 0.045], // rounded slab edge
+	[0.568, 0.06],
+	[0.545, 0.07],
+	[0.5, 0.07],
+	[0.44, 0.07],
+	[0.4, 0.07],
+	[0.39, 0.07],
+	[0.37, 0.07],
+	[0.33, 0.07],
+	[0.32, 0.062], // shallow recess on the back
+	[0.0, 0.062]
+];
+const LID_SLOTS = new Array(LID_CAP.length - 1).fill(0);
 
-export const LID = { seat: 1.012, deck: 0.1556, plateau: 0.17 };
+export const LID = { seat: 1.012, deckCap: 0.134, deckFlat: 0.062 };
 
 export function lidBody() {
-	return latheProfile(LID_PROFILE, LID_SLOTS, { segments: 256, passes: 3 }).geometry;
+	const cap = latheProfile(LID_CAP, LID_SLOTS, { segments: 256, passes: 2 }).geometry;
+	const flat = latheProfile(LID_FLAT, LID_SLOTS, { segments: 256, passes: 2 }).geometry;
+	cap.morphAttributes.position = [flat.attributes.position];
+	cap.morphAttributes.normal = [flat.attributes.normal];
+	cap.morphTargetsRelative = false;
+	return cap;
 }
 
 /** Glow rings on the underside (they face up once the lid is flipped into a coaster). */
@@ -260,7 +297,7 @@ export function sipSlot() {
 	const g = new CapsuleGeometry(0.02, 0.09, 4, 14);
 	g.rotateX(Math.PI / 2); // along z (tangent at +x)
 	g.scale(1, 0.12, 1);
-	g.translate(0.29, LID.deck + 0.001, 0);
+	g.translate(0.29, 0.001, 0);
 	return g;
 }
 

@@ -26,6 +26,8 @@ function Levo({ rig, onReady }) {
 	const group = useRef();
 	const cup = useRef();
 	const lid = useRef();
+	const lidMesh = useRef();
+	const decals = useRef();
 	const { camera, size } = useThree();
 
 	const mats = useMemo(() => createMaterials(), []);
@@ -39,8 +41,8 @@ function Levo({ rig, onReady }) {
 			ringA: lidRing(0.3, 0.011),
 			ringB: lidRing(0.41, 0.006),
 			slot: sipSlot(),
-			vent: new CircleGeometry(0.011, 16).rotateX(-Math.PI / 2).translate(-0.24, LID.deck + 0.002, 0.09),
-			mark: new PlaneGeometry(0.4, 0.06).rotateX(-Math.PI / 2).translate(0, LID.deck + 0.003, 0),
+			vent: new CircleGeometry(0.011, 16).rotateX(-Math.PI / 2).translate(-0.24, 0.002, 0.09),
+			mark: new PlaneGeometry(0.4, 0.06).rotateX(-Math.PI / 2).translate(0, 0.003, 0),
 			glowPlane: new PlaneGeometry(1.8, 1.8).rotateX(-Math.PI / 2).translate(0, -0.006, 0),
 			drink: drinkDisc()
 		}),
@@ -105,6 +107,13 @@ function Levo({ rig, onReady }) {
 		// yaw follows the cup while seated; the coaster is rotationally symmetric, so it just lets go
 		lid.current.rotation.set(Math.PI * flip, cupRot * (1 - sm(0.18, 0.4, T)), 0.35 * Math.sin(Math.PI * sm(0.2, 0.85, T)), 'YXZ');
 
+		// the lid deforms: capping lid (skirt + plug over the rim) -> flat coaster slab as it flips and lands
+		const morph = sm(0.45, 0.85, T);
+		const lm = lidMesh.current;
+		if (!lm.morphTargetInfluences) lm.updateMorphTargets(); // R3F assigns the geometry after construction
+		lm.morphTargetInfluences[0] = morph;
+		decals.current.position.y = LID.deckCap + (LID.deckFlat - LID.deckCap) * morph;
+
 		// light: the halo sleeps while the lid is on; the coaster's rings wake as it lands
 		const halo = 0.3 + 0.7 * sm(0.3, 1, T);
 		const dockOn = sm(0.82, 1, T);
@@ -125,10 +134,12 @@ function Levo({ rig, onReady }) {
 		<group ref={group}>
 			{/* the lid; flipped, it is the coaster */}
 			<group ref={lid}>
-				<mesh geometry={geo.lid} material={[mats.lidTop, mats.lidUnder]} />
-				<mesh geometry={geo.slot} material={mats.slot} />
-				<mesh geometry={geo.vent} material={mats.slot} />
-				<mesh geometry={geo.mark} material={mats.lidMark} renderOrder={4} />
+				<mesh ref={lidMesh} geometry={geo.lid} material={mats.lid} />
+				<group ref={decals}>
+					<mesh geometry={geo.slot} material={mats.slot} />
+					<mesh geometry={geo.vent} material={mats.slot} />
+					<mesh geometry={geo.mark} material={mats.lidMark} renderOrder={4} />
+				</group>
 				<mesh geometry={geo.ringA} material={mats.ring} />
 				<mesh geometry={geo.ringB} material={mats.ring} />
 				<mesh geometry={geo.glowPlane} material={mats.dockGlow} renderOrder={2} />

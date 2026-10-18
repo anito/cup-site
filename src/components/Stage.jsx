@@ -23,7 +23,7 @@ const chapters = [
 		num: '02',
 		title: 'Flip',
 		side: 'left',
-		text: 'One lid, two lives. Lift it off, flip it over, set it down: the lid is now a wireless coaster with a glass face.',
+		text: 'One lid, two lives. Lift it off, flip it over, set it down: the lid flexes flat and is now a wireless leather coaster.',
 		ad: ['New', 'Replaces your coaster drawer']
 	},
 	{

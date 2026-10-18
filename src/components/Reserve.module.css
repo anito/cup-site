@@ -85,6 +85,7 @@
 		left: 50%;
 		top: 50%;
 		width: 104%;
+		height: auto; /* the <img> carries height="1000"; without this it stretches vertically */
 		max-width: none;
 		transform: translate(-50%, -50%);
 	}

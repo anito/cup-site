@@ -137,30 +137,38 @@ def build_drink(mat):
     return obj
 
 
+# the lid has two shapes (a morph in the live scene): a capping lid with skirt + plug that hug the
+# cup rim, and this flat coaster slab. The still shows the coaster state.
 LID_PROFILE = [
-    (0.000, 0.000),   # underside centre (becomes the coaster top when flipped)
+    (0.000, 0.000),   # coaster face (faces up once flipped)
     (0.200, 0.000),
-    (0.380, 0.000),
+    (0.350, 0.000),
+    (0.390, 0.000),
+    (0.430, 0.000),
+    (0.470, 0.000),
     (0.500, 0.000),
-    (0.545, 0.003),
-    (0.575, 0.015),   # rounded flange edge
-    (0.575, 0.050),
-    (0.545, 0.066),
-    (0.440, 0.066),   # flange top
-    (0.405, 0.075),
-    (0.395, 0.150),   # raised plateau
-    (0.375, 0.170),
-    (0.330, 0.170),
-    (0.320, 0.155),   # recessed sip deck
-    (0.000, 0.155),
+    (0.530, 0.002),
+    (0.555, 0.010),
+    (0.570, 0.025),
+    (0.575, 0.045),   # rounded edge
+    (0.568, 0.060),
+    (0.545, 0.070),
+    (0.500, 0.070),
+    (0.440, 0.070),
+    (0.400, 0.070),
+    (0.390, 0.070),
+    (0.370, 0.070),
+    (0.330, 0.070),
+    (0.320, 0.062),   # shallow recess on the back
+    (0.000, 0.062),
 ]
-LID_EDGE_MAT = [1] * 4 + [0] * 10     # 0 soft-touch top, 1 glass underside
+LID_EDGE_MAT = [0] * (len(LID_PROFILE) - 1)
 
 
-def build_lid_coaster(mat_top, mat_under, mat_glow):
-    """The lid, flipped: its glass underside is the coaster top (at z=0), the plateau hangs below."""
+def build_lid_coaster(mat_leather_opaque, mat_glow):
+    """The lid, flipped into a coaster: leather slab with glowing rings inlaid in its face (z=0)."""
     objs = []
-    lid = lathe("LevoLid", LID_PROFILE, LID_EDGE_MAT, [mat_top, mat_under], segments=256)
+    lid = lathe("LevoLid", LID_PROFILE, LID_EDGE_MAT, [mat_leather_opaque], segments=256, passes=2)
     lid.rotation_euler = (math.pi, 0, 0)
     objs.append(lid)
     for name, radius, minor in (("RingA", 0.30, 0.011), ("RingB", 0.41, 0.006)):
@@ -393,8 +401,8 @@ def mat_shell():
     return m
 
 
-def mat_leather():
-    """Cognac leather that goes translucent where the grooves make it thin."""
+def mat_leather(translucent=True):
+    """Cognac leather; with translucent=True it goes see-through where the sleeve grooves make it thin."""
     m, nt, out = new_material("Sleeve_Leather")
     tc = nt.nodes.new("ShaderNodeTexCoord"); tc.location = (-1500, 0)
     grain = noise(nt, (-900, 200), 380.0, 4.0)
@@ -448,7 +456,7 @@ def mat_leather():
     link(nt, op, 0, mix, "Fac")
     link(nt, clear, "BSDF", mix, 1)
     link(nt, b, "BSDF", mix, 2)
-    link(nt, mix, "Shader", out, "Surface")
+    link(nt, mix if translucent else b, "Shader" if translucent else "BSDF", out, "Surface")
     return m
 
 
@@ -694,7 +702,7 @@ def build():
     for ob in (body, sleeve, drink):
         ob.parent = root
 
-    build_lid_coaster(mat_lid_top(), mat_dock_body(), mat_dock_glow())
+    build_lid_coaster(mat_leather(translucent=False), mat_dock_glow())
     build_world(scene)
     cam = build_rig(scene)
     configure_render(scene, 1000, 48)

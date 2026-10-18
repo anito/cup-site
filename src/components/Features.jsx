@@ -20,7 +20,7 @@ const features = [
 	},
 	{
 		title: 'The lid is the coaster',
-		text: 'Press-fit lid on top for the commute; flip it and its glass face becomes a wireless coaster with six millimetres of magnetic float. One part, two jobs.',
+		text: 'Press-fit lid on top for the commute; flip it and it flexes flat into a leather coaster with glowing inlay rings and six millimetres of magnetic float. One part, two jobs.',
 		x: 50,
 		y: 80
 	},

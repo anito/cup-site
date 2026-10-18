@@ -55,7 +55,7 @@ export default function Promo() {
 					</p>
 					<p className={styles.claim}>wireless, zero cables</p>
 					<p className={styles.copy}>
-						Flip it and the lid becomes a glass coaster that charges and levitates your cup. It replaces your coaster
+						Flip it and the lid softens into a flat leather coaster that charges and levitates your cup. It replaces your coaster
 						drawer, your trivet and that one coaster that never quite fit.
 					</p>
 					<p className={styles.fine}>Coaster drawer not included, because you will no longer need it.</p>
