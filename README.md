@@ -1,12 +1,12 @@
 # Levo
 
-A levitating smart cup with a **Thermal Halo** (a fictional concept product): a procedural Blender model with custom shaders, and a scroll-driven SvelteKit site that renders the cup live in the browser with React Three Fiber.
+A levitating smart cup with a **Thermal Halo** (a fictional concept product): a procedural Blender model with custom shaders, and a scroll-driven Next.js site that renders the cup live in the browser with React Three Fiber.
 
 ## Original request
 
 > would you able to create a high resolution blender object including shader, animate this object within a 2D scene and create a highly profossional website from it like https://oryzo.ai/
 
-Follow-ups: reinvent the cup with a creative fictional feature and a simple, futuristic look; port the site to SvelteKit; add a steam background and a printed label; use React Three Fiber instead of rendered frames.
+Follow-ups: reinvent the cup with a creative fictional feature and a simple, futuristic look; port the site to SvelteKit (later replaced by Next.js); add a steam background and a printed label; use React Three Fiber instead of rendered frames.
 
 ## The product idea
 
@@ -20,30 +20,31 @@ Levo hovers above a wireless dock on a six-millimetre magnetic cushion. Inductio
 
 ## Hosting
 
-`.github/workflows/pages.yml` builds and deploys to GitHub Pages on every push to `main` (repo Settings → Pages → Source: GitHub Actions). Live at https://anito.github.io/cup-site/ . All asset URLs are document-relative, so it also works from any sub-path.
+`.github/workflows/pages.yml` builds and deploys to GitHub Pages on every push to `main` with `BASE_PATH=/cup-site` (repo Settings → Pages → Source: GitHub Actions). Live at https://anito.github.io/cup-site/ .
 
 ## Layout
 
-- `src/`: SvelteKit 3 app (Svelte 5 runes, adapter-static). `src/lib/components/Stage.svelte` holds the GSAP ScrollTrigger timeline and mounts the 3D scene.
-- `src/lib/three/`: the **live 3D cup**, a React Three Fiber island mounted from Svelte (`mount.js`). `geometry.js` is a JS port of the Blender parametric model (lathe body, handle tube, dock, glows, label texture), `materials.js` holds the titanium / smoked-label / emissive-halo materials (the label is mapped in the shader from object-space position), `LevoCanvas.jsx` is the scene (strip-softbox environment, camera, hover/rotation). The DOM `.cup` wrapper is the layout driver: GSAP moves and scales it, and the 3D group follows its box every frame.
-- `blender/build_levo.py`: the original Blender source (cup, dock, procedural shaders, lighting, animation) with `bpy` (`pip install bpy`, Python 3.13). Modes: `build`, `test`, `frames`, `still`. It is used for the hero still and social image; the page itself no longer plays pre-rendered frames.
+- `src/app/`: Next.js App Router (static export). `src/components/Stage.jsx` holds the GSAP ScrollTrigger timeline and the pinned scene; the other sections are small client components with CSS Modules.
+- `src/lib/three/`: the **live 3D cup** (React Three Fiber). `geometry.js` is a JS port of the Blender parametric model (lathe body, handle tube, dock, glows, label texture), `materials.js` holds the titanium / smoked-label / emissive-halo materials (the label is mapped in the shader from object-space position), `LevoCanvas.jsx` is the scene (strip-softbox environment, camera, hover/rotation). The DOM `.cup` box in `Stage.jsx` is the layout driver: GSAP moves and scales it, and the 3D group follows its box every frame.
+- `src/components/Steam.jsx`: the WebGL smoke shader (see above).
+- `blender/build_levo.py`: the original Blender source (cup, dock, procedural shaders, lighting, animation) with `bpy` (`pip install bpy`, Python 3.13). Modes: `build`, `test`, `frames`, `still`. It is used for the hero still and social image; the page itself renders the cup live.
 - `blender/export_web.py`: converts the hero still to WebP (adds a bloom glow) and builds the social card.
-- `static/hero-2000.webp`, `static/og.jpg`: Blender-rendered images used in the close-up and reserve sections.
+- `public/`: `hero-2000.webp` and `og.jpg` (Blender renders), favicon.
 
 ## Run the site
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
-npm run build      # static output in build/
-npm run preview
+npm run dev                      # http://localhost:3000
+npm run build                    # static export in out/
+BASE_PATH=/cup-site npm run build   # for GitHub Pages project hosting
 ```
 
 ## Re-render the Blender images
 
 ```bash
 python blender/build_levo.py still hero 2000 160 out/hero.png
-python blender/export_web.py out/hero.png static
+python blender/export_web.py out/hero.png public
 ```
 
 The product, copy, price and sign-up form are illustrative; the form sends nothing.

@@ -1,19 +1,4 @@
-<script>
-	const items = ['Magnetic levitation', 'Thermal Halo', '4-hour hold', 'Wireless dock', 'Induction liner', 'Auto-sleep'];
-</script>
-
-<div class="marquee" aria-hidden="true">
-	<div class="track">
-		{#each [0, 1] as _}
-			{#each items as t}
-				<span>{t}</span><b>◦</b>
-			{/each}
-		{/each}
-	</div>
-</div>
-
-<style>
-	.marquee {
+.marquee {
 		position: relative;
 		z-index: 2;
 		overflow: hidden;
@@ -50,4 +35,3 @@
 			animation: none;
 		}
 	}
-</style>

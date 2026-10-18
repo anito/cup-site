@@ -1,42 +1,4 @@
-<script>
-	import { reveal } from '$lib/actions.js';
-
-	let email = $state('');
-	let msg = $state('');
-
-	function submit(e) {
-		e.preventDefault();
-		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-			msg = 'Please enter a valid email address.';
-			return;
-		}
-		msg = 'You’re on the list — thank you. (Demo form: nothing was sent.)';
-		email = '';
-	}
-</script>
-
-<section class="reserve" id="reserve">
-	<div class="card reveal" use:reveal>
-		<div class="copy">
-			<p class="eyebrow">First production run · autumn</p>
-			<h2>Reserve your <em>Levo.</em></h2>
-			<p class="sub">Leave your email and we’ll hold a unit for you. No payment now — we’ll write when the dock is ready.</p>
-			<form onsubmit={submit} novalidate>
-				<label class="sr-only" for="email">Email address</label>
-				<input id="email" type="email" placeholder="you@studio.com" autocomplete="email" bind:value={email} required />
-				<button class="btn btn--solid" type="submit">Hold a unit</button>
-				<p class="msg" role="status" aria-live="polite">{msg}</p>
-			</form>
-		</div>
-		<div class="art" aria-hidden="true">
-			<div class="orb"></div>
-			<img src="./hero-2000.webp" width="1000" height="1000" loading="lazy" alt="" />
-		</div>
-	</div>
-</section>
-
-<style>
-	.reserve {
+.reserve {
 		padding: clamp(3rem, 6vw, 5rem) var(--gutter) clamp(5rem, 10vw, 8rem);
 	}
 	.card {
@@ -57,7 +19,7 @@
 		z-index: 2;
 		padding: clamp(2rem, 5vw, 4.5rem);
 	}
-	h2 {
+	.reserve h2 {
 		font-family: var(--display);
 		font-weight: 500;
 		font-size: clamp(2.3rem, 5vw, 4.6rem);
@@ -70,13 +32,13 @@
 		max-width: 28rem;
 		color: var(--muted);
 	}
-	form {
+	.reserve form {
 		display: flex;
 		gap: 0.6rem;
 		flex-wrap: wrap;
 		max-width: 30rem;
 	}
-	input {
+	.reserve input {
 		flex: 1 1 14rem;
 		min-width: 0;
 		padding: 0.95em 1.4em;
@@ -89,10 +51,10 @@
 			background 0.3s,
 			box-shadow 0.3s;
 	}
-	input::placeholder {
+	.reserve input::placeholder {
 		color: var(--muted);
 	}
-	input:focus {
+	.reserve input:focus {
 		outline: none;
 		border-color: var(--cyan);
 		box-shadow: 0 0 0 3px rgba(63, 208, 255, 0.18);
@@ -138,4 +100,3 @@
 			width: 90%;
 		}
 	}
-</style>

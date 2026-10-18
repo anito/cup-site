@@ -1,20 +1,18 @@
-<script>
-	import { onMount } from 'svelte';
+'use client';
 
-	/**
-	 * Subtle full-bleed smoke, rendered by a tiny WebGL fragment shader.
-	 * - flow speed follows scroll velocity through a damped follower, so the steam keeps
-	 *   drifting (and slowly settles) after the scroll stops: inertia, not a hard link
-	 * - scroll position adds a slow parallax offset
-	 * - the pointer pushes the smoke around; its influence also decays smoothly
-	 * - tint follows the --accent custom property of the parent (the chapter colour)
-	 */
-	let { intensity = 0.2, fixed = false, skip = () => false } = $props();
+import { useEffect, useRef } from 'react';
+import styles from './Steam.module.css';
 
-	let canvas;
-
-	const VERT = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }`;
-	const FRAG = `
+/**
+ * Subtle full-bleed smoke, rendered by a tiny WebGL fragment shader.
+ * - flow speed follows scroll velocity through a damped follower, so the steam keeps
+ *   drifting (and slowly settles) after the scroll stops: inertia, not a hard link
+ * - scroll position adds a slow parallax offset
+ * - the pointer pushes the smoke around; its influence also decays smoothly
+ * - tint follows the --accent custom property of the parent (the chapter colour)
+ */
+const VERT = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }`;
+const FRAG = `
 precision mediump float;
 uniform vec2 uRes;
 uniform float uFlow;
@@ -49,23 +47,29 @@ void main(){
 	              fbm(p + 3.0 * q + flow * 0.6 + vec2(8.3, 2.8)));
 	float f = fbm(p + 3.5 * r + flow * 0.4);
 	float dens = smoothstep(0.40, 0.95, f) * (0.55 + 0.45 * q.x);
-	dens *= 0.35 + 0.65 * smoothstep(0.95, 0.0, uv.y);   /* steam gathers low, thins as it rises */
+	dens *= 0.35 + 0.65 * smoothstep(0.95, 0.0, uv.y);
 	dens += inf * 0.22 * f;
 	float a = clamp(dens * uIntensity, 0.0, 1.0);
 	gl_FragColor = vec4(uColor * a, a);
 }`;
 
-	const parseColor = (s) => {
-		s = (s || '').trim();
-		if (s.startsWith('#')) {
-			const h = s.length === 4 ? [...s.slice(1)].map((c) => c + c).join('') : s.slice(1);
-			return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
-		}
-		const m = s.match(/[\d.]+/g);
-		return m && m.length >= 3 ? m.slice(0, 3).map((v) => +v / 255) : [0.25, 0.82, 1];
-	};
+const parseColor = (s) => {
+	s = (s || '').trim();
+	if (s.startsWith('#')) {
+		const h = s.length === 4 ? [...s.slice(1)].map((c) => c + c).join('') : s.slice(1);
+		return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+	}
+	const m = s.match(/[\d.]+/g);
+	return m && m.length >= 3 ? m.slice(0, 3).map((v) => +v / 255) : [0.25, 0.82, 1];
+};
 
-	onMount(() => {
+export default function Steam({ intensity = 0.2, fixed = false, skip = () => false }) {
+	const canvasRef = useRef(null);
+	const opts = useRef({ intensity, skip });
+	opts.current = { intensity, skip };
+
+	useEffect(() => {
+		const canvas = canvasRef.current;
 		const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false });
 		if (!gl) return;
 		const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -125,7 +129,7 @@ void main(){
 			const dt = Math.min(0.05, (now - lastT) / 1000 || 0.016);
 			lastT = now;
 			const y = scrollY;
-			if (document.hidden || skip()) {
+			if (document.hidden || opts.current.skip()) {
 				lastY = y;
 				return;
 			}
@@ -152,7 +156,7 @@ void main(){
 			gl.uniform2f(U.uMouse, mouse.x, mouse.y);
 			gl.uniform1f(U.uPush, mouse.push);
 			gl.uniform3f(U.uColor, color[0], color[1], color[2]);
-			gl.uniform1f(U.uIntensity, intensity);
+			gl.uniform1f(U.uIntensity, opts.current.intensity);
 			gl.clearColor(0, 0, 0, 0);
 			gl.clear(gl.COLOR_BUFFER_BIT);
 			gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -165,22 +169,7 @@ void main(){
 			removeEventListener('pointermove', onMove);
 			gl.getExtension('WEBGL_lose_context')?.loseContext();
 		};
-	});
-</script>
+	}, [fixed]);
 
-<canvas bind:this={canvas} class:fixed aria-hidden="true"></canvas>
-
-<style>
-	canvas {
-		position: absolute;
-		inset: 0;
-		z-index: 2;
-		width: 100%;
-		height: 100%;
-		pointer-events: none;
-	}
-	canvas.fixed {
-		position: fixed;
-		z-index: 0;
-	}
-</style>
+	return <canvas ref={canvasRef} className={`${styles.canvas} ${fixed ? styles.fixed : ''}`} aria-hidden="true" />;
+}

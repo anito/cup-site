@@ -1,20 +1,4 @@
-<script>
-	let { temp = 22 } = $props();
-	const t = $derived(Math.min(1, Math.max(0, (temp - 22) / 43)));
-	const status = $derived(
-		temp < 32 ? 'Cool' : temp < 50 ? 'Warming' : temp < 65 ? 'Almost there' : 'Holding'
-	);
-</script>
-
-<aside class="hud" style:--t={t} aria-label="Thermal Halo readout">
-	<p class="label">Thermal Halo</p>
-	<p class="temp" aria-live="off">{temp}<small>°C</small></p>
-	<div class="gauge" aria-hidden="true"><i style:left="{t * 100}%"></i></div>
-	<p class="status">{status}</p>
-</aside>
-
-<style>
-	.hud {
+.hud {
 		position: absolute;
 		z-index: 6;
 		top: 5.4rem;
@@ -80,8 +64,7 @@
 			font-size: 1.9rem;
 		}
 		.gauge,
-		.status {
+.status {
 			display: none;
 		}
 	}
-</style>

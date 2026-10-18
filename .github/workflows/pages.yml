@@ -25,10 +25,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: touch build/.nojekyll
+        env:
+          BASE_PATH: /cup-site
+      - run: touch out/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: build
+          path: out
 
   deploy:
     needs: build

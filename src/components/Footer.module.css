@@ -1,13 +1,4 @@
-<footer>
-	<div class="big" aria-hidden="true">LEVO</div>
-	<div class="row">
-		<p>© 2026 Levo. A concept product — all details are illustrative.</p>
-		<p><a href="#top">Back to top ↑</a></p>
-	</div>
-</footer>
-
-<style>
-	footer {
+.footer {
 		padding: 0 var(--gutter) 2rem;
 		overflow: hidden;
 		border-top: 1px solid var(--line);
@@ -35,7 +26,6 @@
 		font-size: 0.82rem;
 		color: var(--muted);
 	}
-	a:hover {
+	.footer a:hover {
 		color: var(--cyan);
 	}
-</style>

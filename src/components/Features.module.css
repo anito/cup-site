@@ -1,80 +1,11 @@
-<script>
-	import { reveal } from '$lib/actions.js';
-
-	const features = [
-		{
-			title: 'The Thermal Halo',
-			text: 'A recessed band of light that shifts from cyan to amber with the temperature of your drink. Twelve sensors read it, so the colour is always true.',
-			x: 48,
-			y: 46
-		},
-		{
-			title: 'Glowing lip',
-			text: 'A hair-thin line of light traces the rim while Levo is holding your temperature, and fades the moment you lift it away.',
-			x: 30,
-			y: 13
-		},
-		{
-			title: 'Levitation dock',
-			text: 'Six millimetres of magnetic field. The cup floats, turns freely and re-centres itself. The dock charges it wirelessly.',
-			x: 50,
-			y: 80
-		},
-		{
-			title: 'Induction liner',
-			text: 'Double-wall brushed steel. Heat is induced in the liner itself, so the drink warms evenly with no hot spots and no cord.',
-			x: 55,
-			y: 10
-		}
-	];
-	let active = $state(0);
-</script>
-
-<section class="details" id="details">
-	<div class="head reveal" use:reveal>
-		<p class="eyebrow">Anatomy</p>
-		<h2>Simple on the outside. <em>Clever underneath.</em></h2>
-	</div>
-
-	<div class="grid">
-		<figure class="fig reveal" use:reveal>
-			<img src="./hero-2000.webp" width="1400" height="1400" loading="lazy" alt="Close render of the Levo cup showing the Thermal Halo band, glowing lip, steel liner and levitation dock" />
-			{#each features as f, i}
-				<button
-					class="hotspot"
-					class:active={active === i}
-					style:left="{f.x}%"
-					style:top="{f.y}%"
-					aria-label={f.title}
-					onpointerenter={() => (active = i)}
-					onfocus={() => (active = i)}
-					onclick={() => (active = i)}><span></span></button
-				>
-			{/each}
-		</figure>
-
-		<ul class="list reveal" use:reveal={150}>
-			{#each features as f, i}
-				<li class:active={active === i} onpointerenter={() => (active = i)}>
-					<button type="button" onclick={() => (active = i)}>
-						<h3>{f.title}</h3>
-						<p>{f.text}</p>
-					</button>
-				</li>
-			{/each}
-		</ul>
-	</div>
-</section>
-
-<style>
-	.details {
+.details {
 		padding: clamp(5rem, 12vw, 10rem) var(--gutter);
 	}
 	.head {
 		max-width: 62rem;
 		margin: 0 auto clamp(2.5rem, 6vw, 5rem);
 	}
-	h2 {
+	.details h2 {
 		font-family: var(--display);
 		font-weight: 500;
 		font-size: clamp(2.3rem, 5.4vw, 5rem);
@@ -173,7 +104,7 @@
 		cursor: pointer;
 		padding: 1.4rem 0 1.4rem 1.6rem;
 	}
-	h3 {
+	.details h3 {
 		font-family: var(--display);
 		font-weight: 500;
 		font-size: 1.55rem;
@@ -194,4 +125,3 @@
 			animation: none;
 		}
 	}
-</style>

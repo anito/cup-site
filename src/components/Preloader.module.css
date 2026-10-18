@@ -1,26 +1,4 @@
-<script>
-	let { progress = 0, done = false } = $props();
-	const pct = $derived(Math.round(progress * 100));
-
-	$effect(() => {
-		document.body.style.overflow = done ? '' : 'hidden';
-		return () => (document.body.style.overflow = '');
-	});
-</script>
-
-<div class="preloader" class:done role="status" aria-live="polite">
-	<div class="ring">
-		<svg viewBox="0 0 100 100" aria-hidden="true">
-			<circle cx="50" cy="50" r="46" class="bg" />
-			<circle cx="50" cy="50" r="46" class="fg" style:stroke-dashoffset={289 * (1 - progress)} />
-		</svg>
-		<div class="count">{pct}<i>%</i></div>
-	</div>
-	<p>Charging the dock</p>
-</div>
-
-<style>
-	.preloader {
+.preloader {
 		position: fixed;
 		inset: 0;
 		z-index: 100;
@@ -44,7 +22,7 @@
 		display: grid;
 		place-items: center;
 	}
-	svg {
+	.preloader svg {
 		position: absolute;
 		inset: 0;
 		width: 100%;
@@ -78,11 +56,10 @@
 		color: var(--muted);
 		margin-left: 0.15em;
 	}
-	p {
+	.preloader p {
 		font-family: var(--display);
 		font-size: 0.7rem;
 		letter-spacing: 0.24em;
 		text-transform: uppercase;
 		color: var(--muted);
 	}
-</style>

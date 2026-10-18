@@ -168,7 +168,7 @@ em {
 }
 
 /* sections below the story sit above the page-wide steam canvas */
-main > :not(.story),
+main > *,
 footer {
 	position: relative;
 	z-index: 1;
