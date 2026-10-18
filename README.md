@@ -12,6 +12,15 @@ Follow-up: reinvent the cup with a creative fictional feature and a simple, futu
 
 Levo hovers above a wireless dock on a six-millimetre magnetic cushion. Induction in its steel liner holds your drink at a chosen temperature (20–80 °C) for up to four hours, and a recessed light band, the Thermal Halo, shifts from cyan to amber so you can read the temperature at a glance. The site scrubs the cup through four chapters (Float, Halo, Hold, Rest) while a live readout climbs from 22 to 65 °C.
 
+## Details
+
+- **Printed wordmark:** a vertical, negative "LEVO" (knocked out of a dark band) on the cup, generated as an alpha texture in `build_levo.py` and mapped cylindrically in the shell shader.
+- **Steam:** `src/lib/components/Steam.svelte` is a small WebGL smoke shader. Scroll velocity feeds a damped follower (about 0.5 s), so the smoke keeps drifting after you stop scrolling; the pointer pushes it around; it takes the chapter colour.
+
+## Hosting
+
+`.github/workflows/pages.yml` builds and deploys to GitHub Pages on every push to `main` (repo Settings → Pages → Source: GitHub Actions). Live at https://anito.github.io/cup-site/ . All asset URLs are document-relative, so it also works from any sub-path.
+
 ## Layout
 
 - `blender/build_levo.py`: builds the cup, dock, procedural shaders, lighting and animation with `bpy` (`pip install bpy`, Python 3.13). Modes: `build`, `test`, `frames`, `still`.
