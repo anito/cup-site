@@ -30,18 +30,18 @@ CAM_FOCAL = 85
 # slots: 0 titanium shell, 1 steel liner, 2 halo glow
 PROFILE = [
     (0.000, 0.040),
-    (0.300, 0.040),
-    (0.342, 0.080),
-    (0.360, 0.240),
-    (0.352, 0.262),   # halo groove
-    (0.352, 0.430),
-    (0.362, 0.452),
-    (0.425, 0.965),
+    (0.280, 0.040),
+    (0.318, 0.078),   # rounded base corner
+    (0.338, 0.240),
+    (0.334, 0.262),   # halo groove (follows the cone)
+    (0.355, 0.430),
+    (0.364, 0.452),
+    (0.428, 0.965),
     (0.432, 0.985),
     (0.416, 1.012),   # glowing lip
     (0.399, 0.985),
     (0.386, 0.940),
-    (0.330, 0.200),
+    (0.296, 0.200),
     (0.000, 0.150),
 ]
 EDGE_MAT = [0, 0, 0, 0, 2, 0, 0, 0, 2, 2, 1, 1, 1]
@@ -123,30 +123,41 @@ def build_drink(mat):
     return obj
 
 
-def build_dock(mat_body, mat_glow):
-    """Dark glass dock; top surface at z=0. Returns list of objects."""
+LID_PROFILE = [
+    (0.000, 0.000),   # underside centre (becomes the coaster top when flipped)
+    (0.200, 0.000),
+    (0.380, 0.000),
+    (0.500, 0.000),
+    (0.545, 0.003),
+    (0.575, 0.015),   # rounded flange edge
+    (0.575, 0.050),
+    (0.545, 0.066),
+    (0.440, 0.066),   # flange top
+    (0.405, 0.075),
+    (0.395, 0.150),   # raised plateau
+    (0.375, 0.170),
+    (0.330, 0.170),
+    (0.320, 0.155),   # recessed sip deck
+    (0.000, 0.155),
+]
+LID_EDGE_MAT = [1] * 4 + [0] * 10     # 0 soft-touch top, 1 glass underside
+
+
+def build_lid_coaster(mat_top, mat_under, mat_glow):
+    """The lid, flipped: its glass underside is the coaster top (at z=0), the plateau hangs below."""
     objs = []
-    bpy.ops.mesh.primitive_cylinder_add(vertices=192, radius=0.66, depth=0.10,
-                                        location=(0, 0, -0.05))
-    d = bpy.context.active_object
-    d.name = "LevoDock"
-    d.data.materials.append(mat_body)
-    bv = d.modifiers.new("Bevel", "BEVEL")
-    bv.width = 0.035
-    bv.segments = 6
-    for p in d.data.polygons:
-        p.use_smooth = True
-    objs.append(d)
-    for name, radius, minor, z in (("RingA", 0.44, 0.011, 0.004), ("RingB", 0.55, 0.006, 0.003)):
+    lid = lathe("LevoLid", LID_PROFILE, LID_EDGE_MAT, [mat_top, mat_under], segments=256)
+    lid.rotation_euler = (math.pi, 0, 0)
+    objs.append(lid)
+    for name, radius, minor in (("RingA", 0.30, 0.011), ("RingB", 0.41, 0.006)):
         bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=minor,
                                          major_segments=192, minor_segments=12,
-                                         location=(0, 0, z))
+                                         location=(0, 0, 0.004))
         t = bpy.context.active_object
         t.name = "Dock" + name
         t.data.materials.append(mat_glow)
         objs.append(t)
     return objs
-
 
 
 # --------------------------------------------------------------------------
@@ -457,6 +468,25 @@ def mat_halo():
     return m
 
 
+def mat_lid_top():
+    """Matte graphite soft-touch plastic for the lid's top."""
+    m, nt, out = new_material("Lid_SoftTouch")
+    tc = nt.nodes.new("ShaderNodeTexCoord"); tc.location = (-800, 0)
+    n = noise(nt, (-600, -150), 300.0, 4.0)
+    link(nt, tc, "Object", n, "Vector")
+    bump = nt.nodes.new("ShaderNodeBump"); bump.location = (-300, -150)
+    bump.inputs["Strength"].default_value = 0.1
+    bump.inputs["Distance"].default_value = 0.002
+    link(nt, n, "Fac", bump, "Height")
+    b = nt.nodes.new("ShaderNodeBsdfPrincipled"); b.location = (200, 0)
+    setv(b, "Base Color", (0.028, 0.030, 0.038, 1))
+    setv(b, "Roughness", 0.55)
+    setv(b, "Sheen Weight", 0.25)
+    link(nt, bump, "Normal", b, "Normal")
+    link(nt, b, "BSDF", out, "Surface")
+    return m
+
+
 def mat_dock_glow():
     m, nt, out = new_material("Dock_Glow")
     e = nt.nodes.new("ShaderNodeEmission"); e.location = (0, 0)
@@ -624,7 +654,7 @@ def build():
     for ob in (body, sleeve, drink):
         ob.parent = root
 
-    build_dock(mat_dock_body(), mat_dock_glow())
+    build_lid_coaster(mat_lid_top(), mat_dock_body(), mat_dock_glow())
     build_world(scene)
     cam = build_rig(scene)
     configure_render(scene, 1000, 48)

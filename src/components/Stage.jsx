@@ -13,40 +13,53 @@ const LevoCanvas = dynamic(() => import('@/lib/three/LevoCanvas'), { ssr: false 
 const chapters = [
 	{
 		num: '01',
-		title: 'Float',
+		title: 'Seal',
 		side: 'right',
-		text: 'Six millimetres above everything. A magnetic field lifts Levo off its dock and lets it spin freely. Lift it away and it sleeps — set it down and it wakes.'
+		text: 'Lid on for the commute. A press-fit lid seals in the heat and stops the drips, with a sip slot sized for one calm mouthful.',
+		ad: ['Commute Mode', 'Fits 98% of car cup holders*'],
+		fine: '*of the ones we tried'
 	},
 	{
 		num: '02',
-		title: 'Halo',
+		title: 'Flip',
 		side: 'left',
-		text: 'The Thermal Halo. A band of light around the body shifts from cyan to amber as your drink warms, so you can read its temperature from across the room.'
+		text: 'One lid, two lives. Lift it off, flip it over, set it down: the lid is now a wireless coaster with a glass face.',
+		ad: ['New', 'Replaces your coaster drawer']
 	},
 	{
 		num: '03',
-		title: 'Hold',
+		title: 'Float',
 		side: 'right',
-		text: 'Choose any temperature from 20 to 80 °C. Induction in the steel liner holds it there for up to four hours, to within a single degree.'
+		text: 'Six millimetres above everything. A magnetic field lifts Levo off its lid-coaster and lets it spin freely. Lift it away and it sleeps — set it down and it wakes.',
+		ad: ['Desk Mode', '15 W wireless, zero cables']
 	},
 	{
 		num: '04',
-		title: 'Rest',
+		title: 'Halo',
+		side: 'left',
+		text: 'The Thermal Halo shifts from cyan to amber as your drink warms, and induction in the steel liner holds your chosen temperature, from 20 to 80 °C, for four hours.',
+		ad: ['As featured on', 'The Imaginary Morning Show']
+	},
+	{
+		num: '05',
+		title: 'Pack',
 		side: 'center',
-		text: 'When you lift it away, the halo dims and the dock goes quiet. Come back, and your drink is exactly as you left it.'
+		text: 'Leaving? Lift the cup, flip the lid back on, and the halo sleeps. Come back and your drink is exactly as you left it.',
+		ad: ['Founders’ offer', 'Engraved lid + spare sleeve, free']
 	}
 ];
-const railLabels = ['Intro', 'Float', 'Halo', 'Hold', 'Rest'];
+const railLabels = ['Intro', 'Seal', 'Flip', 'Float', 'Halo', 'Pack'];
 
 /* scene palette, one entry per chapter */
 const PAL = [
 	{ bg: '#05070b', accent: '#3fd0ff' },
 	{ bg: '#060a14', accent: '#5b8cff' },
 	{ bg: '#0b0714', accent: '#d05cff' },
+	{ bg: '#051012', accent: '#3fe0c8' },
 	{ bg: '#120905', accent: '#ffab3c' },
 	{ bg: '#04060a', accent: '#3fd0ff' }
 ];
-const AT = [0, 0.13, 0.35, 0.57, 0.79];
+const AT = [0, 0.1, 0.27, 0.45, 0.63, 0.82];
 
 export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 	const stageRef = useRef(null);
@@ -64,7 +77,7 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 	const chapterRefs = useRef([]);
 
 	/* shared with the 3D scene, which reads it every frame (no React re-render) */
-	const rig = useRef({ frame: 0, mouse: 0, cupEl: null, reduce: false }).current;
+	const rig = useRef({ frame: 0, mouse: 0, lidT: 0, cupEl: null, reduce: false }).current;
 
 	const [temp, setTemp] = useState(22);
 	const [railIndex, setRailIndex] = useState(0);
@@ -162,7 +175,7 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 						onUpdate: (self) => {
 							const p = self.progress;
 							heroWeight = clamp(1 - p / 0.06, 0, 1);
-							const k = clamp((p - 0.1) / 0.62, 0, 1);
+							const k = clamp((p - 0.3) / 0.42, 0, 1);
 							setTemp(Math.round(22 + 43 * (k * k * (3 - 2 * k))));
 							let idx = 0;
 							AT.forEach((t, i) => {
@@ -182,11 +195,15 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 				const m = isMobile();
 				const path = [
 					{ x: m ? 0 : vw(-23), y: m ? () => -innerHeight * 0.2 : () => 0, scale: m ? 0.92 : 1.04 },
-					{ x: m ? 0 : vw(23), y: m ? () => -innerHeight * 0.2 : () => 0, scale: m ? 0.95 : 1.1 },
-					{ x: m ? 0 : vw(-19), y: m ? () => -innerHeight * 0.2 : () => -innerHeight * 0.01, scale: m ? 1.02 : 1.2 },
+					{ x: 0, y: m ? () => -innerHeight * 0.2 : () => 0, scale: m ? 0.95 : 1.0 },
+					{ x: m ? 0 : vw(-23), y: m ? () => -innerHeight * 0.2 : () => 0, scale: m ? 0.98 : 1.1 },
+					{ x: m ? 0 : vw(22), y: m ? () => -innerHeight * 0.2 : () => -innerHeight * 0.01, scale: m ? 1.02 : 1.16 },
 					{ x: 0, y: m ? () => -innerHeight * 0.22 : () => -innerHeight * 0.1, scale: m ? 1.0 : 0.88 }
 				];
 				path.forEach((p, i) => tl.to(cup, { ...p, duration: 0.09, ease: 'power2.inOut' }, AT[i + 1] - 0.055));
+				// the lid: off and flipped into the coaster during "Flip", back on during "Pack"
+				tl.to(rig, { lidT: 1, duration: 0.17, ease: 'none' }, AT[2] - 0.01);
+				tl.to(rig, { lidT: 0, duration: 0.15, ease: 'none' }, AT[5] - 0.02);
 				PAL.slice(1).forEach((p, i) =>
 					tl.to(stage, { '--bg': p.bg, '--accent': p.accent, duration: 0.09, ease: 'power1.inOut' }, AT[i + 1] - 0.06)
 				);
@@ -195,7 +212,7 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 
 				chapterRefs.current.forEach((el, i) => {
 					const start = AT[i + 1];
-					const last = i === 3;
+					const last = i === chapters.length - 1;
 					const dy = 34;
 					tl.fromTo(el, { opacity: 0, y: dy }, { opacity: 1, y: 0, duration: 0.045, ease: 'power2.out' }, start);
 					if (!last) tl.to(el, { opacity: 0, y: -dy, duration: 0.04, ease: 'power2.in' }, AT[i + 2] - 0.065);
@@ -283,7 +300,7 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 					className={styles.gl}
 					ref={glRef}
 					role="img"
-					aria-label="A champagne-titanium cup with a full-height smoked LEVO label and a glowing Thermal Halo band, levitating above a round dark dock"
+					aria-label="A champagne-titanium takeaway cup with a leather sleeve, a full-height smoked LEVO label and a glowing Thermal Halo band, its lid flipping into a coaster"
 				>
 					<LevoCanvas rig={rig} active={active} onReady={handleGlReady} />
 				</div>
@@ -301,8 +318,8 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 					</div>
 					<div className={styles['hero-right']} ref={heroRightRef}>
 						<p className={styles.lede}>
-							Levo hovers above its dock, holds your drink at the exact temperature you choose, and shows it in a ring
-							of light.
+							A cup, a lid and a levitating coaster in two parts. Lid on for the commute; flip it and Levo floats on your
+							desk, holding the exact temperature you choose.
 						</p>
 						<div className={styles.actions}>
 							<a className="btn btn--solid" href="#reserve">
@@ -324,6 +341,11 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 						<span className={styles.num}>{c.num}</span>
 						<h2>{c.title}</h2>
 						<p>{c.text}</p>
+						<p className={styles.ad}>
+							<b>{c.ad[0]}</b>
+							<span>{c.ad[1]}</span>
+						</p>
+						{c.fine && <small className={styles.fine}>{c.fine}</small>}
 					</article>
 				))}
 

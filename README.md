@@ -10,9 +10,12 @@ Follow-ups: reinvent the cup with a creative fictional feature and a simple, fut
 
 ## The product idea
 
-Levo hovers above a wireless dock on a six-millimetre magnetic cushion. Induction in its steel liner holds your drink at a chosen temperature (20–80 °C) for up to four hours, and a recessed light band, the Thermal Halo, shifts from cyan to amber so you can read the temperature at a glance. The site turns the live 3D cup through four chapters (Float, Halo, Hold, Rest) while a live readout climbs from 22 to 65 °C.
+Levo hovers above its own lid, flipped into a wireless coaster, on a six-millimetre magnetic cushion. Induction in its steel liner holds your drink at a chosen temperature (20–80 °C) for up to four hours, and a recessed light band, the Thermal Halo, shifts from cyan to amber so you can read the temperature at a glance. The site turns the live 3D cup through four chapters (Float, Halo, Hold, Rest) while a live readout climbs from 22 to 65 °C.
 
 ## Details
+
+- **Shape and lid-coaster:** the cup follows a takeaway-cup silhouette (straight tapered cone, flat rim). Its lid is also the coaster: the top has a flange, raised plateau, recessed sip deck, sip slot, vent and a champagne wordmark, and the underside is a dark glass face with glowing rings. In the scroll story the lid lifts off, flies clear of the cup, flips while descending and slides in underneath as the levitation coaster; in the last chapter it flips back on and the halo sleeps. The path is a single parameter (`rig.lidT`) tweened by GSAP and read by the 3D scene (`LevoCanvas.jsx`).
+- **Fictional advertising:** per-chapter ad pills (Commute Mode, Desk Mode, "as featured on" and a founders' offer), a promo section with two ad cards, and the updated marquee, specs and reserve copy.
 
 - **Material:** bead-blasted, anodised champagne titanium with fine anisotropic lathe lines, lit by tall strip softboxes so the body picks up long machined-metal highlights.
 - **Label:** a vertical, negative "LEVO" knocked out of a smoked matte-black strip that is taller than the cup, so its top and bottom edges are never visible and the lettering spans the whole height. It is generated as an alpha texture and mapped cylindrically (constant width on the tapered body). The same mask dims the Thermal Halo shader to about a third, so the ring stays visible through the label, and it continues across the sleeve.

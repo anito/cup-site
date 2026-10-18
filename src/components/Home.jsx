@@ -5,6 +5,7 @@ import Preloader from './Preloader';
 import Nav from './Nav';
 import Stage from './Stage';
 import Marquee from './Marquee';
+import Promo from './Promo';
 import Features from './Features';
 import Specs from './Specs';
 import Reserve from './Reserve';
@@ -28,6 +29,7 @@ export default function Home() {
 			<main id="top">
 				<Stage onProgress={onProgress} onReady={onReady} />
 				<Marquee />
+				<Promo />
 				<Features />
 				<Specs />
 				<Reserve />

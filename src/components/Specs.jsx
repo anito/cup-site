@@ -2,12 +2,12 @@ import { Reveal, CountUp } from './Reveal';
 import styles from './Specs.module.css';
 
 const stats = [
-	{ label: 'Float height', value: 6, unit: 'mm', note: 'A magnetic cushion between cup and dock.' },
+	{ label: 'Float height', value: 6, unit: 'mm', note: 'A magnetic cushion between cup and lid-coaster.' },
 	{ label: 'Hold time', value: 4, unit: 'hours', note: 'Within one degree of your setpoint.' },
 	{ label: 'Max temperature', value: 80, unit: '°C', note: 'Adjustable from 20 °C in one-degree steps.' },
-	{ label: 'Sensors', value: 12, unit: 'points', note: 'Ring-mounted, reading the liner continuously.' }
+	{ label: 'Parts', value: 2, unit: 'pieces', note: 'A cup, and a lid that is also the coaster.' }
 ];
-const notes = ['USB-C dock, 15 W', 'Cup is dishwasher-safe', '2-year warranty'];
+const notes = ['Lid-coaster charges over USB-C, 15 W', 'Cup is dishwasher-safe', 'Fits 98% of car cup holders*', '2-year warranty'];
 
 export default function Specs() {
 	return (

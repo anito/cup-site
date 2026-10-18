@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import styles from './Marquee.module.css';
 
-const items = ['Magnetic levitation', 'Thermal Halo', '4-hour hold', 'Wireless dock', 'Induction liner', 'Auto-sleep'];
+const items = ['Lid + coaster in one', 'Commute Mode', 'Desk Mode', 'Magnetic levitation', 'Thermal Halo', '4-hour hold', 'Leather sleeve'];
 
 export default function Marquee() {
 	return (

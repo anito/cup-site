@@ -25,7 +25,7 @@ export default function Preloader({ progress = 0, done = false }) {
 					<i>%</i>
 				</div>
 			</div>
-			<p>Charging the dock</p>
+			<p>Seating the lid</p>
 		</div>
 	);
 }

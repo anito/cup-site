@@ -19,8 +19,8 @@ const features = [
 		y: 13
 	},
 	{
-		title: 'Levitation dock',
-		text: 'Six millimetres of magnetic field. The cup floats, turns freely and re-centres itself. The dock charges it wirelessly.',
+		title: 'The lid is the coaster',
+		text: 'Press-fit lid on top for the commute; flip it and its glass face becomes a wireless coaster with six millimetres of magnetic float. One part, two jobs.',
 		x: 50,
 		y: 80
 	},
@@ -57,7 +57,7 @@ export default function Features() {
 						width="1400"
 						height="1400"
 						loading="lazy"
-						alt="Close render of the Levo cup showing the Thermal Halo band, glowing lip, steel liner and levitation dock"
+						alt="Close render of the Levo takeaway cup showing the Thermal Halo band, glowing lip, leather sleeve, steel liner and the flipped lid acting as a levitating coaster"
 					/>
 					{features.map((f, i) => (
 						<button

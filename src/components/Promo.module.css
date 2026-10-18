@@ -1,0 +1,135 @@
+.promo {
+	padding: clamp(5rem, 11vw, 9rem) var(--gutter) clamp(3rem, 6vw, 5rem);
+	background: transparent;
+}
+.head {
+	max-width: 62rem;
+	margin: 0 auto clamp(2.5rem, 6vw, 4.5rem);
+}
+.head h2 {
+	font-family: var(--display);
+	font-weight: 500;
+	font-size: clamp(2.3rem, 5.4vw, 5rem);
+	line-height: 1;
+	letter-spacing: -0.04em;
+	margin-top: 1.2rem;
+}
+.grid {
+	max-width: 76rem;
+	margin: 0 auto;
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: clamp(1rem, 2.5vw, 2rem);
+}
+.card {
+	position: relative;
+	overflow: hidden;
+	padding: clamp(1.6rem, 3vw, 2.6rem);
+	border: 1px solid var(--line);
+	border-radius: 1.8rem;
+	background:
+		radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--cyan) 14%, transparent), transparent 55%),
+		linear-gradient(160deg, #0d1320, #070a12);
+}
+.card:nth-child(2) {
+	background:
+		radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--amber) 16%, transparent), transparent 55%),
+		linear-gradient(160deg, #130f0b, #080709);
+}
+.tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.7rem;
+	font-family: var(--display);
+	font-size: 0.72rem;
+	letter-spacing: 0.2em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+.tag svg {
+	width: 2.2rem;
+	height: 2.2rem;
+	color: var(--ink);
+}
+.stat {
+	margin-top: 2rem;
+	font-family: var(--display);
+	font-weight: 300;
+	font-size: clamp(4.5rem, 10vw, 8rem);
+	line-height: 0.9;
+	letter-spacing: -0.06em;
+}
+.stat small {
+	font-size: 0.32em;
+	letter-spacing: 0;
+	color: var(--cyan);
+	margin-left: 0.15em;
+}
+.card:nth-child(2) .stat small {
+	color: var(--amber);
+}
+.claim {
+	margin-top: 0.4rem;
+	font-family: var(--display);
+	font-size: 1.15rem;
+	color: var(--ink);
+}
+.copy {
+	margin-top: 1.2rem;
+	max-width: 30rem;
+	color: var(--muted);
+}
+.fine {
+	margin-top: 1.4rem;
+	font-size: 0.72rem;
+	color: var(--muted);
+	opacity: 0.8;
+}
+.offer {
+	max-width: 76rem;
+	margin: clamp(1rem, 2.5vw, 2rem) auto 0;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 2rem;
+	flex-wrap: wrap;
+	padding: clamp(1.6rem, 3vw, 2.4rem) clamp(1.6rem, 3vw, 3rem);
+	border: 1px dashed color-mix(in srgb, var(--amber) 55%, transparent);
+	border-radius: 1.8rem;
+	background: color-mix(in srgb, var(--amber) 7%, transparent);
+}
+.ribbon {
+	display: inline-block;
+	padding: 0.3rem 0.8rem;
+	border-radius: 999px;
+	background: var(--amber);
+	color: #130a02;
+	font-family: var(--display);
+	font-size: 0.66rem;
+	font-weight: 600;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+.offer h3 {
+	margin-top: 1rem;
+	font-family: var(--display);
+	font-weight: 500;
+	font-size: clamp(1.5rem, 3vw, 2.4rem);
+	line-height: 1.1;
+	letter-spacing: -0.03em;
+	max-width: 34rem;
+}
+.offer h3 em {
+	color: var(--amber);
+}
+.offer p:not(.ribbon) {
+	margin-top: 0.8rem;
+	max-width: 34rem;
+	color: var(--muted);
+	font-size: 0.95rem;
+}
+@media (max-width: 860px) {
+	.grid {
+		grid-template-columns: 1fr;
+	}
+}

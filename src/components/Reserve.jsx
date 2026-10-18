@@ -23,12 +23,12 @@ export default function Reserve() {
 		<section className={styles.reserve} id="reserve">
 			<Reveal className={styles.card}>
 				<div className={styles.copy}>
-					<p className="eyebrow">First production run · autumn</p>
+					<p className="eyebrow">Founders’ offer · first 500 reservations</p>
 					<h2>
 						Reserve your <em>Levo.</em>
 					</h2>
 					<p className={styles.sub}>
-						Leave your email and we’ll hold a unit for you. No payment now — we’ll write when the dock is ready.
+						Leave your email and we’ll hold a unit, with a free engraved lid and a spare leather sleeve while the offer lasts. No payment now — we’ll write when the lid-coaster is ready.
 					</p>
 					<form onSubmit={submit} noValidate>
 						<label className="sr-only" htmlFor="email">

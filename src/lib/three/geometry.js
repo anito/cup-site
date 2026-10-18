@@ -4,6 +4,7 @@
 import {
 	BufferGeometry,
 	CanvasTexture,
+	CapsuleGeometry,
 	Color,
 	Float32BufferAttribute,
 	LinearSRGBColorSpace,
@@ -19,21 +20,21 @@ export const PRINT = {
 	center: (-70 * Math.PI) / 180
 };
 
-/* (r, y) of the cup wall: foot recess centre -> up the outside -> over the lip -> down the inside */
+/* (r, y) of the cup wall (a straight takeaway-cup cone): foot centre -> up the outside -> over the lip -> down the inside */
 const PROFILE = [
 	[0.0, 0.04],
-	[0.3, 0.04],
-	[0.342, 0.08],
-	[0.36, 0.24],
-	[0.352, 0.262], // halo groove
-	[0.352, 0.43],
-	[0.362, 0.452],
-	[0.425, 0.965],
+	[0.28, 0.04],
+	[0.318, 0.078], // rounded base corner
+	[0.338, 0.24],
+	[0.334, 0.262], // halo groove (follows the cone)
+	[0.355, 0.43],
+	[0.364, 0.452],
+	[0.428, 0.965],
 	[0.432, 0.985],
 	[0.416, 1.012], // lip
 	[0.399, 0.985],
 	[0.386, 0.94],
-	[0.33, 0.2],
+	[0.296, 0.2],
 	[0.0, 0.15]
 ];
 /* material slot per edge: 0 titanium shell, 1 steel liner, 2 halo glow */
@@ -155,7 +156,7 @@ export function latheProfile(profile, edgeSlots, { segments = 256, passes = 3, c
 	const index = [];
 	[...buckets.keys()].sort().forEach((slot) => {
 		const start = index.length;
-		index.push(...buckets.get(slot));
+		for (const v of buckets.get(slot)) index.push(v); // (spreading a large array overflows the call stack)
 		g.addGroup(start, index.length - start, slot);
 	});
 	g.setIndex(index);
@@ -201,22 +202,46 @@ export function sleeve(points) {
 	return latheProfile(profile, new Array(profile.length - 1).fill(0), { segments: 256, passes: 2 }).geometry;
 }
 
-export function dockBody() {
-	const profile = [
-		[0.0, -0.1],
-		[0.62, -0.1],
-		[0.66, -0.07],
-		[0.66, -0.02],
-		[0.63, 0.0],
-		[0.0, 0.0]
-	];
-	return latheProfile(profile, new Array(profile.length - 1).fill(0), { segments: 192, passes: 3 }).geometry;
+/* The lid is also the coaster: its glass underside (y = 0) becomes the coaster top when flipped. */
+const LID_PROFILE = [
+	[0.0, 0.0],
+	[0.2, 0.0],
+	[0.38, 0.0],
+	[0.5, 0.0],
+	[0.545, 0.003],
+	[0.575, 0.015], // rounded flange edge
+	[0.575, 0.05],
+	[0.545, 0.066],
+	[0.44, 0.066], // flange top
+	[0.405, 0.075],
+	[0.395, 0.15], // raised plateau
+	[0.375, 0.17],
+	[0.33, 0.17],
+	[0.32, 0.155], // recessed sip deck
+	[0.0, 0.155]
+];
+const LID_SLOTS = [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // 0 soft-touch top, 1 glass underside
+
+export const LID = { seat: 1.012, deck: 0.1556, plateau: 0.17 };
+
+export function lidBody() {
+	return latheProfile(LID_PROFILE, LID_SLOTS, { segments: 256, passes: 3 }).geometry;
 }
 
-export function dockRing(radius, tube) {
+/** Glow rings on the underside (they face up once the lid is flipped into a coaster). */
+export function lidRing(radius, tube) {
 	const g = new TorusGeometry(radius, tube, 12, 192);
 	g.rotateX(Math.PI / 2);
-	g.translate(0, 0.004, 0);
+	g.translate(0, -0.003, 0);
+	return g;
+}
+
+/** Sip slot cut into the plateau edge (a dark capsule lying on the sip deck). */
+export function sipSlot() {
+	const g = new CapsuleGeometry(0.02, 0.09, 4, 14);
+	g.rotateX(Math.PI / 2); // along z (tangent at +x)
+	g.scale(1, 0.12, 1);
+	g.translate(0.29, LID.deck + 0.001, 0);
 	return g;
 }
 
@@ -373,9 +398,9 @@ export function dockGlowTexture() {
 	const unit = s / 1.8; // plane is 1.8 world units wide
 	ctx.strokeStyle = '#33b8ff';
 	for (const [r, wid, blur, alpha] of [
-		[0.44, 0.02, 0.07, 0.9],
-		[0.55, 0.012, 0.06, 0.8],
-		[0.5, 0.2, 0.2, 0.14]
+		[0.3, 0.02, 0.07, 0.9],
+		[0.41, 0.012, 0.06, 0.8],
+		[0.36, 0.2, 0.2, 0.14]
 	]) {
 		ctx.save();
 		ctx.shadowColor = '#33b8ff';

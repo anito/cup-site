@@ -153,12 +153,33 @@ export function createMaterials() {
 		clearcoatRoughness: 0.03
 	});
 
-	const dock = new MeshPhysicalMaterial({
+	/* the lid: matte graphite soft-touch on top, dark glass on the underside (the coaster face) */
+	const lidTop = new MeshPhysicalMaterial({
+		color: linear(0.028, 0.03, 0.038),
+		roughness: 0.55,
+		sheen: 0.4,
+		sheenRoughness: 0.5,
+		sheenColor: linear(0.25, 0.28, 0.34),
+		bumpMap: leatherGrainTexture(),
+		bumpScale: 0.25,
+		envMapIntensity: 1.4
+	});
+	const lidUnder = new MeshPhysicalMaterial({
 		color: linear(0.012, 0.014, 0.02),
 		roughness: 0.22,
 		clearcoat: 0.8,
 		clearcoatRoughness: 0.05,
 		envMapIntensity: 2.1
+	});
+	const slot = new MeshBasicMaterial({ color: 0x020304 });
+	/* champagne foil mark on the sip deck */
+	const lidMark = new MeshBasicMaterial({
+		map: brandTexture(),
+		transparent: true,
+		color: 0xd9b88a,
+		toneMapped: false,
+		depthWrite: false,
+		opacity: 0.95
 	});
 
 	const ring = new MeshBasicMaterial({ color: 0x4fd2ff, toneMapped: false });
@@ -187,5 +208,5 @@ export function createMaterials() {
 		opacity: 0.9
 	});
 
-	return { shell, liner, halo, sleeve, drink, dock, ring, haloGlow, lipGlow, dockGlow };
+	return { shell, liner, halo, sleeve, drink, lidTop, lidUnder, slot, lidMark, ring, haloGlow, lipGlow, dockGlow };
 }

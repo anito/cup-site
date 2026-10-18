@@ -3,26 +3,29 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer } from '@react-three/drei';
-import { PlaneGeometry } from 'three';
-import {
-	cupBody,
-	haloShell,
-	lipGlow,
-	sleeve as sleeveGeometry,
-	dockBody,
-	dockRing,
-	drinkDisc
-} from './geometry.js';
+import { PlaneGeometry, CircleGeometry } from 'three';
+import { cupBody, haloShell, lipGlow, sleeve as sleeveGeometry, lidBody, lidRing, sipSlot, drinkDisc, LID } from './geometry.js';
 import { createMaterials } from './materials.js';
 
-const TARGET_Y = 0.5; // the point the camera looks at (centre of the cup)
+const TARGET_Y = 0.5; // the point the camera looks at (centre of the cup + coaster)
 const CAM_DIST = 5.2;
 const HOVER = 0.34;
 const UNITS_ACROSS = 2.2; // world units spanned by the square the frames used to fill
 
+/* the lid's journey (rig.lidT 0 -> 1): lift off, slide clear of the cup, flip while it descends,
+   then slide in underneath as the coaster. The same curve runs backwards to put it back on. */
+const SIDE = 1.25;
+const LIFT = 0.55;
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
+const sm = (a, b, x) => {
+	const t = clamp01((x - a) / (b - a));
+	return t * t * (3 - 2 * t);
+};
+
 function Levo({ rig, onReady }) {
 	const group = useRef();
 	const cup = useRef();
+	const lid = useRef();
 	const { camera, size } = useThree();
 
 	const mats = useMemo(() => createMaterials(), []);
@@ -32,20 +35,26 @@ function Levo({ rig, onReady }) {
 			shells: [haloShell(body.points, 0.012), haloShell(body.points, 0.03)],
 			lip: lipGlow(0.416, 0.03),
 			sleeve: sleeveGeometry(body.points),
-			dock: dockBody(),
-			ringA: dockRing(0.44, 0.011),
-			ringB: dockRing(0.55, 0.006),
-			drink: drinkDisc(),
-			glowPlane: new PlaneGeometry(1.8, 1.8).rotateX(-Math.PI / 2)
+			lid: lidBody(),
+			ringA: lidRing(0.3, 0.011),
+			ringB: lidRing(0.41, 0.006),
+			slot: sipSlot(),
+			vent: new CircleGeometry(0.011, 16).rotateX(-Math.PI / 2).translate(-0.24, LID.deck + 0.002, 0.09),
+			mark: new PlaneGeometry(0.4, 0.06).rotateX(-Math.PI / 2).translate(0, LID.deck + 0.003, 0),
+			glowPlane: new PlaneGeometry(1.8, 1.8).rotateX(-Math.PI / 2).translate(0, -0.006, 0),
+			drink: drinkDisc()
 		}),
 		[body]
 	);
 
 	const readyRef = useRef(false);
-	useEffect(() => () => {
-		Object.values(geo).flat().forEach((g) => g.dispose?.());
-		body.geometry.dispose();
-	}, [geo, body]);
+	useEffect(
+		() => () => {
+			Object.values(geo).flat().forEach((g) => g.dispose?.());
+			body.geometry.dispose();
+		},
+		[geo, body]
+	);
 
 	useFrame((state) => {
 		const t = state.clock.elapsedTime;
@@ -68,17 +77,43 @@ function Levo({ rig, onReady }) {
 			camera.updateProjectionMatrix();
 		}
 
-		const phase = ((rig.frame / 72) % 1 + 1) % 1;
+		const phase = (((rig.frame / 72) % 1) + 1) % 1;
 		const el = ((19 + 11 * Math.sin(2 * Math.PI * phase)) * Math.PI) / 180;
 		camera.position.set(0, TARGET_Y + CAM_DIST * Math.sin(el), CAM_DIST * Math.cos(el));
 		camera.lookAt(0, TARGET_Y, 0);
 
+		/* sealed (cup + lid stacked, centred ~0.43 higher) -> coaster mode */
+		const T = clamp01(rig.lidT ?? 0);
+		const shift = -0.43 * (1 - sm(0.3, 1, T));
 		group.current.scale.setScalar(k);
-		group.current.position.set(dx, dy + TARGET_Y * (1 - k), 0);
+		group.current.position.set(dx, dy + TARGET_Y * (1 - k) + shift * k, 0);
 
 		const idle = rig.reduce ? 0 : 0.012 * Math.sin(t * 1.4);
-		cup.current.position.y = HOVER + 0.035 * Math.sin(2 * Math.PI * phase) + idle;
-		cup.current.rotation.y = (-20 * Math.PI) / 180 - (rig.frame / 72) * 2 * Math.PI + (rig.mouse || 0);
+		const cupY = HOVER + 0.035 * Math.sin(2 * Math.PI * phase) + idle;
+		const cupRot = (-20 * Math.PI) / 180 - (rig.frame / 72) * 2 * Math.PI + (rig.mouse || 0);
+		cup.current.position.y = cupY;
+		cup.current.rotation.y = cupRot;
+
+		// lid pose along its path
+		const lift = sm(0, 0.22, T);
+		const side = sm(0.22, 0.5, T);
+		const down = sm(0.5, 0.85, T);
+		const back = sm(0.85, 1, T);
+		const seatY = cupY + LID.seat;
+		const flip = sm(0.3, 0.8, T);
+		lid.current.position.set(SIDE * side * (1 - back), (seatY + LIFT * lift) * (1 - down), 0);
+		// yaw follows the cup while seated; the coaster is rotationally symmetric, so it just lets go
+		lid.current.rotation.set(Math.PI * flip, cupRot * (1 - sm(0.18, 0.4, T)), 0.35 * Math.sin(Math.PI * sm(0.2, 0.85, T)), 'YXZ');
+
+		// light: the halo sleeps while the lid is on; the coaster's rings wake as it lands
+		const halo = 0.3 + 0.7 * sm(0.3, 1, T);
+		const dockOn = sm(0.82, 1, T);
+		mats.halo.color.setScalar(halo);
+		mats.haloGlow[0].opacity = 0.3 * halo;
+		mats.haloGlow[1].opacity = 0.13 * halo;
+		mats.lipGlow.opacity = 0.22 * halo;
+		mats.ring.color.set(0x4fd2ff).multiplyScalar(0.12 + 0.88 * dockOn);
+		mats.dockGlow.opacity = 0.9 * dockOn;
 
 		if (!readyRef.current) {
 			readyRef.current = true;
@@ -88,13 +123,18 @@ function Levo({ rig, onReady }) {
 
 	return (
 		<group ref={group}>
-			{/* dock */}
-			<mesh geometry={geo.dock} material={mats.dock} />
-			<mesh geometry={geo.ringA} material={mats.ring} />
-			<mesh geometry={geo.ringB} material={mats.ring} />
-			<mesh geometry={geo.glowPlane} material={mats.dockGlow} position={[0, 0.006, 0]} renderOrder={2} />
+			{/* the lid; flipped, it is the coaster */}
+			<group ref={lid}>
+				<mesh geometry={geo.lid} material={[mats.lidTop, mats.lidUnder]} />
+				<mesh geometry={geo.slot} material={mats.slot} />
+				<mesh geometry={geo.vent} material={mats.slot} />
+				<mesh geometry={geo.mark} material={mats.lidMark} renderOrder={4} />
+				<mesh geometry={geo.ringA} material={mats.ring} />
+				<mesh geometry={geo.ringB} material={mats.ring} />
+				<mesh geometry={geo.glowPlane} material={mats.dockGlow} renderOrder={2} />
+			</group>
 
-			{/* cup */}
+			{/* the cup */}
 			<group ref={cup}>
 				<mesh geometry={body.geometry} material={[mats.shell, mats.liner, mats.halo]} />
 				<mesh geometry={geo.sleeve} material={mats.sleeve} />
