@@ -113,6 +113,9 @@ function Levo({ rig, onReady }) {
 		if (!lm.morphTargetInfluences) lm.updateMorphTargets(); // R3F assigns the geometry after construction
 		lm.morphTargetInfluences[0] = morph;
 		decals.current.position.y = LID.deckCap + (LID.deckFlat - LID.deckCap) * morph;
+		// the stitched ring runs along the flange: r = 0.452 on the capping lid, 0.53 on the flat coaster
+		const ls = mats.lid.userData.shader;
+		if (ls) ls.uniforms.uRing.value = 0.452 + 0.078 * morph;
 
 		// light: the halo sleeps while the lid is on; the coaster's rings wake as it lands
 		const halo = 0.3 + 0.7 * sm(0.3, 1, T);

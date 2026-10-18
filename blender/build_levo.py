@@ -102,30 +102,20 @@ def lathe(name, profile, edge_labels, mats, segments=SEGMENTS, passes=CHAIKIN_PA
     return obj
 
 
-SLEEVE_T = 0.024                                      # full leather thickness on the ridges
-GROOVE_DEPTH, GROOVE_HALF = 0.017, 0.014              # grooves leave ~0.007 of leather: translucent
-GROOVE_CENTERS = [0.550, 0.618, 0.686, 0.754, 0.822]
+SLEEVE_T = 0.024                                      # leather thickness
 WALL_SLOPE, WALL_R0 = 0.1236, 0.318                   # straight cone: r = R0 + SLOPE * (y - 0.078)
-
-
-def sleeve_thickness(y):
-    g = 0.0
-    for c in GROOVE_CENTERS:
-        d = abs(y - c)
-        if d < GROOVE_HALF:
-            g = max(g, 0.5 * (1 + math.cos(math.pi * d / GROOVE_HALF)))
-    return SLEEVE_T - GROOVE_DEPTH * g
+SLEEVE_Y0, SLEEVE_Y1 = 0.49, 0.87
 
 
 def build_sleeve(mat):
-    """Leather grip sleeve with rounded circumferential grooves, hugging the upper body."""
+    """One-piece leather grip sleeve with rolled edges, hugging the upper body."""
     r_at = lambda y: WALL_R0 + WALL_SLOPE * (y - 0.078)
-    y0, y1, n = 0.49, 0.87, 140
-    ys = [y0 + (y1 - y0) * i / n for i in range(n + 1)]
+    n = 12
+    ys = [SLEEVE_Y0 + (SLEEVE_Y1 - SLEEVE_Y0) * i / n for i in range(n + 1)]
     inner = [(r_at(y) + 0.0015, y) for y in ys]
-    outer = [(r_at(y) + sleeve_thickness(y), y) for y in ys]
+    outer = [(r_at(y) + SLEEVE_T, y) for y in ys]
     profile = [inner[0], outer[0]] + outer[1:] + [inner[-1]] + inner[-2::-1]
-    return lathe("LevoSleeve", profile, [0] * (len(profile) - 1), [mat], passes=1)
+    return lathe("LevoSleeve", profile, [0] * (len(profile) - 1), [mat], passes=2)
 
 
 def build_drink(mat):
@@ -237,7 +227,7 @@ def make_print_texture(path=PRINT_PATH, w=618, h=2000):
     return path
 
 
-def add_print(nt, tc):
+def add_print_u(nt, tc):
     """Cylindrical label mapping from object coords; returns the Image Texture node.
     u = angle * radius / width keeps the label a constant width on the tapered body."""
     sep = nt.nodes.new("ShaderNodeSeparateXYZ"); sep.location = (-1300, -500)
@@ -282,7 +272,54 @@ def add_print(nt, tc):
     img.interpolation = "Cubic"
     img.extension = "CLIP"
     link(nt, cb, "Vector", img, "Vector")
-    return img
+    return img, uu
+
+
+def add_print(nt, tc):
+    return add_print_u(nt, tc)[0]
+
+
+STITCH_PATH = os.path.join(HERE, "levo_stitch.png")
+STITCH_ROWS = (0.848, 0.512)          # y of the two saddle-stitch rows (near the sleeve's edges)
+STITCH_PITCH = 0.02
+
+
+def make_stitch_texture(path=STITCH_PATH, w=4096, h=620):
+    """Saddle stitching in cylindrical sleeve space: u = (angle + pi) / 2pi, v = (y - y0) / (y1 - y0).
+    R = thread, G = the darker hole/shadow around each stitch. Includes the vertical seam (angle 0)."""
+    from PIL import Image, ImageDraw, ImageFilter
+
+    thread = Image.new("L", (w, h), 0)
+    shadow = Image.new("L", (w, h), 0)
+    dt, ds = ImageDraw.Draw(thread), ImageDraw.Draw(shadow)
+    circ = 2 * math.pi * 0.40                       # sleeve circumference (object units)
+    px_per_unit_u = w / circ
+    px_per_unit_v = h / (SLEEVE_Y1 - SLEEVE_Y0)
+
+    def stitch(cx, cy, dx, dy):
+        for d, wd in ((ds, 12), (dt, 7)):
+            d.line((cx - dx, cy - dy, cx + dx, cy + dy), fill=255, width=wd)
+            r = wd // 2
+            for ex, ey in ((cx - dx, cy - dy), (cx + dx, cy + dy)):
+                d.ellipse((ex - r, ey - r, ex + r, ey + r), fill=255)
+
+    n_around = int(circ / STITCH_PITCH)
+    for row_y in STITCH_ROWS:
+        cy = h - (row_y - SLEEVE_Y0) * px_per_unit_v       # image y grows downwards
+        for i in range(n_around):
+            cx = (i + 0.5) * w / n_around
+            stitch(cx, cy, 10, -3)                          # slanted saddle stitch
+    # vertical seam at angle 0 (u = 0.5): two rows of slanted stitches either side
+    n_up = int((SLEEVE_Y1 - SLEEVE_Y0) / STITCH_PITCH)
+    for off in (-0.0105, 0.0105):
+        cx = w / 2 + off * px_per_unit_u
+        for j in range(n_up):
+            cy = (j + 0.5) * h / n_up
+            stitch(cx, cy, 3, 10)
+    shadow = shadow.filter(ImageFilter.GaussianBlur(2.5))
+    img = Image.merge("RGBA", (thread, shadow, Image.new("L", (w, h), 0), Image.new("L", (w, h), 255)))
+    img.save(path)
+    return path
 
 
 # --------------------------------------------------------------------------
@@ -401,62 +438,118 @@ def mat_shell():
     return m
 
 
-def mat_leather(translucent=True):
-    """Cognac leather; with translucent=True it goes see-through where the sleeve grooves make it thin."""
-    m, nt, out = new_material("Sleeve_Leather")
+def mat_leather(sleeve=True):
+    """Hand-finished cognac leather. The sleeve version carries the cup's lettering stamped (debossed
+    and burnished) where it covers the label, saddle stitching and burnished edges; the lid is the
+    same leather without the sleeve-specific details."""
+    m, nt, out = new_material("Sleeve_Leather" if sleeve else "Lid_Leather")
     tc = nt.nodes.new("ShaderNodeTexCoord"); tc.location = (-1500, 0)
-    grain = noise(nt, (-900, 200), 380.0, 4.0)
+
+    # pebbled grain + patina mottling
+    grain = noise(nt, (-900, 300), 520.0, 5.0)
     link(nt, tc, "Object", grain, "Vector")
-    bump = nt.nodes.new("ShaderNodeBump"); bump.location = (-500, 200)
-    bump.inputs["Strength"].default_value = 0.35
-    bump.inputs["Distance"].default_value = 0.004
-    link(nt, grain, "Fac", bump, "Height")
-    var = noise(nt, (-900, 0), 5.0, 4.0)
-    link(nt, tc, "Object", var, "Vector")
-    col = ramp(nt, [(0.3, (0.17, 0.055, 0.020, 1)), (0.7, (0.27, 0.100, 0.036, 1))], "LINEAR", (-500, 0))
-    link(nt, var, "Fac", col, "Fac")
+    pebble = nt.nodes.new("ShaderNodeTexVoronoi"); pebble.location = (-900, 120)
+    pebble.inputs["Scale"].default_value = 260.0
+    link(nt, tc, "Object", pebble, "Vector")
+    mixh = nt.nodes.new("ShaderNodeMath"); mixh.operation = "ADD"; mixh.location = (-700, 220)
+    link(nt, grain, "Fac", mixh, 0)
+    link(nt, pebble, "Distance", mixh, 1)
+    patina = noise(nt, (-900, -60), 26.0, 5.0)
+    link(nt, tc, "Object", patina, "Vector")
+    col = ramp(nt, [(0.25, (0.20, 0.052, 0.014, 1)), (0.55, (0.32, 0.100, 0.028, 1)),
+                    (0.85, (0.42, 0.150, 0.045, 1))], "LINEAR", (-600, -60))
+    link(nt, patina, "Fac", col, "Fac")
+    color_out, color_sock = col, "Color"
+    height_out = mixh                                  # bump height source
 
-    # leather thickness from the object-space radius: t = r - wall(y) - 0.0015
-    sep = nt.nodes.new("ShaderNodeSeparateXYZ"); sep.location = (-1300, -400)
-    link(nt, tc, "Object", sep, "Vector")
-    xx = nt.nodes.new("ShaderNodeMath"); xx.operation = "POWER"; xx.inputs[1].default_value = 2.0
-    yy = nt.nodes.new("ShaderNodeMath"); yy.operation = "POWER"; yy.inputs[1].default_value = 2.0
-    link(nt, sep, "X", xx, 0)
-    link(nt, sep, "Y", yy, 0)
-    ad = nt.nodes.new("ShaderNodeMath"); ad.operation = "ADD"
-    link(nt, xx, 0, ad, 0)
-    link(nt, yy, 0, ad, 1)
-    rr = nt.nodes.new("ShaderNodeMath"); rr.operation = "SQRT"
-    link(nt, ad, 0, rr, 0)
-    line = nt.nodes.new("ShaderNodeMath"); line.operation = "MULTIPLY_ADD"
-    line.inputs[1].default_value = WALL_SLOPE
-    line.inputs[2].default_value = WALL_R0 - WALL_SLOPE * 0.078 + 0.0015
-    link(nt, sep, "Z", line, 0)
-    th = nt.nodes.new("ShaderNodeMath"); th.operation = "SUBTRACT"
-    link(nt, rr, 0, th, 0)
-    link(nt, line, 0, th, 1)
-    mr = nt.nodes.new("ShaderNodeMapRange"); mr.location = (-300, -400)
-    mr.inputs["From Min"].default_value = 0.009
-    mr.inputs["From Max"].default_value = 0.0165
-    link(nt, th, 0, mr, "Value")
-    op = nt.nodes.new("ShaderNodeMath"); op.operation = "MULTIPLY_ADD"; op.location = (-100, -400)
-    op.inputs[1].default_value = 0.8
-    op.inputs[2].default_value = 0.2                    # thin leather keeps ~20% opacity
-    link(nt, mr, "Result", op, 0)
+    normal_src = None
+    if sleeve:
+        img, uu = add_print_u(nt, tc)
+        # letters = knocked-out parts of the label, only inside the strip's width
+        ge = nt.nodes.new("ShaderNodeMath"); ge.operation = "GREATER_THAN"; ge.inputs[1].default_value = 0.033
+        le = nt.nodes.new("ShaderNodeMath"); le.operation = "LESS_THAN"; le.inputs[1].default_value = 0.967
+        link(nt, uu, 0, ge, 0)
+        link(nt, uu, 0, le, 0)
+        strip = nt.nodes.new("ShaderNodeMath"); strip.operation = "MULTIPLY"
+        link(nt, ge, 0, strip, 0)
+        link(nt, le, 0, strip, 1)
+        inv = nt.nodes.new("ShaderNodeMath"); inv.operation = "SUBTRACT"; inv.inputs[0].default_value = 1.0
+        link(nt, img, "Alpha", inv, 1)
+        letters = nt.nodes.new("ShaderNodeMath"); letters.operation = "MULTIPLY"; letters.location = (-300, -250)
+        link(nt, inv, 0, letters, 0)
+        link(nt, strip, 0, letters, 1)
 
-    b = nt.nodes.new("ShaderNodeBsdfPrincipled"); b.location = (200, 0)
-    link(nt, col, "Color", b, "Base Color")
+        # stitching texture (R = thread, G = hole shadow)
+        sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+        link(nt, tc, "Object", sep, "Vector")
+        at = nt.nodes.new("ShaderNodeMath"); at.operation = "ARCTAN2"
+        link(nt, sep, "Y", at, 0)
+        link(nt, sep, "X", at, 1)
+        us = nt.nodes.new("ShaderNodeMath"); us.operation = "MULTIPLY_ADD"
+        us.inputs[1].default_value = 1.0 / (2 * math.pi)
+        us.inputs[2].default_value = 0.5
+        link(nt, at, 0, us, 0)
+        vs = nt.nodes.new("ShaderNodeMath"); vs.operation = "MULTIPLY_ADD"
+        vs.inputs[1].default_value = 1.0 / (SLEEVE_Y1 - SLEEVE_Y0)
+        vs.inputs[2].default_value = -SLEEVE_Y0 / (SLEEVE_Y1 - SLEEVE_Y0)
+        link(nt, sep, "Z", vs, 0)
+        cb = nt.nodes.new("ShaderNodeCombineXYZ")
+        link(nt, us, 0, cb, "X")
+        link(nt, vs, 0, cb, "Y")
+        st = nt.nodes.new("ShaderNodeTexImage"); st.location = (-300, -550)
+        st.image = bpy.data.images.load(make_stitch_texture())
+        st.image.colorspace_settings.name = "Non-Color"
+        st.extension = "REPEAT"
+        link(nt, cb, "Vector", st, "Vector")
+        stsep = nt.nodes.new("ShaderNodeSeparateColor"); stsep.location = (-100, -550)
+        link(nt, st, "Color", stsep, "Color")
+
+        # stamped letters: burnished dark, debossed
+        dark = nt.nodes.new("ShaderNodeMix"); dark.data_type = "RGBA"; dark.location = (150, 60)
+        dark.inputs["B"].default_value = (0.018, 0.007, 0.003, 1)
+        link(nt, color_out, color_sock, dark, "A")
+        lm = nt.nodes.new("ShaderNodeMath"); lm.operation = "MULTIPLY"; lm.inputs[1].default_value = 0.85
+        link(nt, letters, 0, lm, 0)
+        link(nt, lm, 0, dark, "Factor")
+        # thread over everything
+        thr = nt.nodes.new("ShaderNodeMix"); thr.data_type = "RGBA"; thr.location = (350, 60)
+        thr.inputs["B"].default_value = (0.62, 0.42, 0.22, 1)
+        link(nt, dark, "Result", thr, "A")
+        link(nt, stsep, "Red", thr, "Factor")
+        color_out, color_sock = thr, "Result"
+
+        # bump: grain, letters pressed in, thread raised, holes sunk
+        h1 = nt.nodes.new("ShaderNodeMath"); h1.operation = "MULTIPLY_ADD"
+        h1.inputs[1].default_value = -3.0
+        link(nt, letters, 0, h1, 0)
+        h1.inputs[2].default_value = 0.0
+        h2 = nt.nodes.new("ShaderNodeMath"); h2.operation = "MULTIPLY_ADD"
+        h2.inputs[1].default_value = 2.0
+        link(nt, stsep, "Red", h2, 0)
+        link(nt, h1, 0, h2, 2)
+        h3 = nt.nodes.new("ShaderNodeMath"); h3.operation = "MULTIPLY_ADD"
+        h3.inputs[1].default_value = -0.8
+        link(nt, stsep, "Green", h3, 0)
+        link(nt, h2, 0, h3, 2)
+        h4 = nt.nodes.new("ShaderNodeMath"); h4.operation = "MULTIPLY_ADD"
+        h4.inputs[1].default_value = 0.25
+        link(nt, mixh, 0, h4, 0)
+        link(nt, h3, 0, h4, 2)
+        height_out = h4
+
+    bump = nt.nodes.new("ShaderNodeBump"); bump.location = (350, 250)
+    bump.inputs["Strength"].default_value = 0.6
+    bump.inputs["Distance"].default_value = 0.0035
+    link(nt, height_out, 0, bump, "Height")
+
+    b = nt.nodes.new("ShaderNodeBsdfPrincipled"); b.location = (700, 0)
+    link(nt, color_out, color_sock, b, "Base Color")
     link(nt, bump, "Normal", b, "Normal")
-    setv(b, "Roughness", 0.5)
-    setv(b, "Coat Weight", 0.06)
-    setv(b, "Coat Roughness", 0.3)
-    setv(b, "Sheen Weight", 0.1)
-    clear = nt.nodes.new("ShaderNodeBsdfTransparent"); clear.location = (200, -250)
-    mix = nt.nodes.new("ShaderNodeMixShader"); mix.location = (600, 0)
-    link(nt, op, 0, mix, "Fac")
-    link(nt, clear, "BSDF", mix, 1)
-    link(nt, b, "BSDF", mix, 2)
-    link(nt, mix if translucent else b, "Shader" if translucent else "BSDF", out, "Surface")
+    setv(b, "Roughness", 0.46)
+    setv(b, "Coat Weight", 0.07)
+    setv(b, "Coat Roughness", 0.25)
+    setv(b, "Sheen Weight", 0.12)
+    link(nt, b, "BSDF", out, "Surface")
     return m
 
 
@@ -694,7 +787,7 @@ def build():
     scene = bpy.context.scene
     shell, liner, halo = mat_shell(), mat_liner(), mat_halo()
     body = lathe("LevoBody", PROFILE, EDGE_MAT, [shell, liner, halo])
-    sleeve = build_sleeve(mat_leather())
+    sleeve = build_sleeve(mat_leather(sleeve=True))
     drink = build_drink(mat_drink())
 
     root = bpy.data.objects.new("LevoRoot", None)
@@ -702,7 +795,7 @@ def build():
     for ob in (body, sleeve, drink):
         ob.parent = root
 
-    build_lid_coaster(mat_leather(translucent=False), mat_dock_glow())
+    build_lid_coaster(mat_leather(sleeve=False), mat_dock_glow())
     build_world(scene)
     cam = build_rig(scene)
     configure_render(scene, 1000, 48)

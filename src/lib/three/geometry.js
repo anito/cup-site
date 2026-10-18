@@ -191,34 +191,23 @@ export function lipGlow(radius, tube) {
 	return g;
 }
 
-/* Sleeve profile: rounded circumferential grooves cut into the leather. Where the leather is
-   thin (the grooves) the shader makes it translucent, so the label on the cup shows through. */
+/* One-piece leather sleeve with rolled edges, hugging the upper body above the Halo groove. */
 export const SLEEVE = {
 	thickness: 0.024,
-	grooveDepth: 0.017,
-	grooveHalf: 0.014,
-	centers: [0.55, 0.618, 0.686, 0.754, 0.822],
+	y0: 0.49,
+	y1: 0.87,
 	wallSlope: 0.1236, // the cup wall is a straight cone: r = r0 + slope * (y - 0.078)
 	wallR0: 0.318
 };
-const sleeveThickness = (y) => {
-	let g = 0;
-	for (const c of SLEEVE.centers) {
-		const d = Math.abs(y - c);
-		if (d < SLEEVE.grooveHalf) g = Math.max(g, 0.5 * (1 + Math.cos((Math.PI * d) / SLEEVE.grooveHalf)));
-	}
-	return SLEEVE.thickness - SLEEVE.grooveDepth * g;
-};
 
-/** Leather grip sleeve with grooves, hugging the upper body above the Halo groove. */
 export function sleeve() {
 	const rAt = (y) => SLEEVE.wallR0 + SLEEVE.wallSlope * (y - 0.078);
-	const y0 = 0.49, y1 = 0.87, n = 140;
-	const ys = Array.from({ length: n + 1 }, (_, i) => y0 + ((y1 - y0) * i) / n);
+	const n = 12;
+	const ys = Array.from({ length: n + 1 }, (_, i) => SLEEVE.y0 + ((SLEEVE.y1 - SLEEVE.y0) * i) / n);
 	const inner = ys.map((y) => [rAt(y) + 0.0015, y]);
-	const outer = ys.map((y) => [rAt(y) + sleeveThickness(y), y]);
+	const outer = ys.map((y) => [rAt(y) + SLEEVE.thickness, y]);
 	const profile = [inner[0], outer[0], ...outer.slice(1), inner[n], ...inner.slice(0, -1).reverse()];
-	return latheProfile(profile, new Array(profile.length - 1).fill(0), { segments: 256, passes: 1 }).geometry;
+	return latheProfile(profile, new Array(profile.length - 1).fill(0), { segments: 256, passes: 2 }).geometry;
 }
 
 /* The lid is also the coaster, and it deforms between the two. Both shapes share one topology so
@@ -408,27 +397,6 @@ export function brandTexture() {
 	return t;
 }
 
-/** Fine leather grain for the sleeve bump map. */
-export function leatherGrainTexture() {
-	const s = 256;
-	const cv = document.createElement('canvas');
-	cv.width = cv.height = s;
-	const ctx = cv.getContext('2d');
-	ctx.fillStyle = '#808080';
-	ctx.fillRect(0, 0, s, s);
-	for (let i = 0; i < 5200; i++) {
-		const g = 60 + Math.random() * 140;
-		ctx.fillStyle = `rgb(${g},${g},${g})`;
-		ctx.beginPath();
-		ctx.arc(Math.random() * s, Math.random() * s, 1.5 + Math.random() * 3, 0, Math.PI * 2);
-		ctx.fill();
-	}
-	const t = new CanvasTexture(cv);
-	t.wrapS = t.wrapT = 1000; // RepeatWrapping
-	t.repeat.set(16, 3);
-	return t;
-}
-
 /** Fine lathe lines for the bump map (variation along v only). */
 export function latheLinesTexture() {
 	const cv = document.createElement('canvas');
@@ -442,6 +410,36 @@ export function latheLinesTexture() {
 	}
 	const t = new CanvasTexture(cv);
 	t.wrapS = t.wrapT = 1000; // RepeatWrapping
+	return t;
+}
+
+/** Pebbled full-grain leather for the bump map: soft rounded cells separated by fine creases. */
+export function leatherGrainTexture() {
+	const s = 256;
+	const cv = document.createElement('canvas');
+	cv.width = cv.height = s;
+	const ctx = cv.getContext('2d');
+	ctx.fillStyle = '#707070';
+	ctx.fillRect(0, 0, s, s);
+	for (let i = 0; i < 1500; i++) {
+		const x = Math.random() * s;
+		const y = Math.random() * s;
+		const r = 3 + Math.random() * 5;
+		for (const [ox, oy] of [[0, 0], [-s, 0], [s, 0], [0, -s], [0, s]]) {
+			const gr = ctx.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+			gr.addColorStop(0, 'rgba(235,235,235,0.9)');
+			gr.addColorStop(0.7, 'rgba(150,150,150,0.5)');
+			gr.addColorStop(1, 'rgba(60,60,60,0)');
+			ctx.fillStyle = gr;
+			ctx.beginPath();
+			ctx.arc(x + ox, y + oy, r, 0, Math.PI * 2);
+			ctx.fill();
+		}
+	}
+	const t = new CanvasTexture(cv);
+	t.wrapS = t.wrapT = 1000; // RepeatWrapping
+	t.repeat.set(26, 5);
+	t.anisotropy = 8;
 	return t;
 }
 
