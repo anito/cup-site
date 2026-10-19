@@ -4,7 +4,7 @@ Written so a **new session** can continue in a **new repository** without this c
 
 ## 1. The task for the next session
 
-Build a **new** site in a **new repo** (suggested name: `levo-ai`, created empty by the user; the session needs push access to it). Reuse the cup and the engine from this repo, but rebuild the **scroll stages in the style of oryzo.ai**: a deadpan parody of AI product pages for a ridiculous product, with playful, interactive mini-scenes, invented "science" with numbers and a fake research paper. User wording: "be fictive, don't be too serious, use high quality effects", "use oryzo.ai as inspiration".
+Build a **new** site in a **new repo** named **`ember-site`** (`anito/ember-site`, created empty by the user; the session needs push access to it). Note: "Ember" was the very first product name in this project (a ceramic cup, since replaced by "Levo"); the repo name is the user's choice, the product name for the new site is still open and must be asked, do not assume.. Reuse the cup and the engine from this repo, but rebuild the **scroll stages in the style of oryzo.ai**: a deadpan parody of AI product pages for a ridiculous product, with playful, interactive mini-scenes, invented "science" with numbers and a fake research paper. User wording: "be fictive, don't be too serious, use high quality effects", "use oryzo.ai as inspiration".
 
 Proposed concept (user said "yes, rebuild the stages that way", details not yet agreed): product "Levo-1" (the AI-era cup). Stage ideas mapped from oryzo.ai:
 - Hero: "Made for mugs"-style one-liner + a PLAY button; hover-hand gag ("AI fills in the gaps. We said high five. It heard six.").
@@ -23,7 +23,7 @@ Full copy deck: `docs/oryzo-notes.md`.
 ## 3. Environment facts and traps
 
 - GitHub: **creating repos from the session fails (403)**; the user creates the repo, then `add_repo` attaches it (`push` access). Branch deletion and tag pushes through the proxy fail ("remote end hung up"), the GitHub API delete is refused. The old branch `claude/ember-cup-site` in `anito/mogney` still exists; user must delete it by hand. A tag `levo-v1` could not be pushed; the commit hash `8137bdd` is the reference.
-- Pages: `.github/workflows/pages.yml` builds with `BASE_PATH=/cup-site` and publishes `out/`. Repo Settings > Pages > Source must be "GitHub Actions". For a new repo change `BASE_PATH` to `/<repo>`. At the time of writing the last deploy run (8137bdd) sat in status `waiting` for ~27 min (possibly an environment approval or queue); not verified live.
+- Pages: `.github/workflows/pages.yml` builds with `BASE_PATH=/cup-site` and publishes `out/`. Repo Settings > Pages > Source must be "GitHub Actions". For the new repo set `BASE_PATH=/ember-site` (live URL `https://anito.github.io/ember-site/`); in `.github/workflows/pages.yml` and in the README; Pages source must be "GitHub Actions" there too. At the time of writing the last deploy run (8137bdd) sat in status `waiting` for ~27 min (possibly an environment approval or queue); not verified live.
 - The sandbox cannot open github.io; nothing was seen live. All checks were local headless Chromium with software WebGL (slow; frames lag, wait 10 s+ after scroll before a screenshot).
 - `pkill -f <name>` kills the session's own shell (command line matches). Use `pgrep -f` with the `[x]yz` trick or kill by PID.
 - Containers can restart and kill background jobs (renders, http servers). Re-start.
@@ -63,3 +63,17 @@ Not verified: real GPU performance (mirror pass + shadows may be heavy; the user
 3. Agree the stage list and tone with the user in 5 lines, then rebuild `Stage.jsx` chapters and add interactive mini-scenes (hover-hand, chat box, flip-encryption on the lid, drop test, thermal diagram, circularity gauge, paper section with BibTeX).
 4. Keep the cup, materials and lighting as they are unless asked.
 5. Test with the headless pipeline (wait long after scroll), report verified/unverified honestly, push, check the Pages run.
+
+## 8. Start prompt for the new session (copy as the first message)
+
+> Repos: attach `anito/ember-site` (empty, push access) and `anito/cup-site` (read; source of truth is `HANDOVER.md` and `docs/oryzo-notes.md` there, state at commit `a46474c`).
+> Read `HANDOVER.md` first. Do not start building yet. Steps: (1) check that https://oryzo.ai/ can be loaded (`curl`); if not, stop and tell me how to allow the host. (2) Tell me in 5 lines what you learned from the page and what you cannot know (motion), and ask me for screenshots/video if needed. (3) Propose the stage list and product name and wait for my OK. (4) Only then copy the code into `ember-site`, set `BASE_PATH=/ember-site`, rebuild the stages, test, push and confirm the Pages run. Report verified vs. unverified honestly.
+
+## 9. Acceptance checklist for the rebuild
+
+- [ ] oryzo.ai was actually read (or the user supplied screenshots); the summary says what is known/unknown.
+- [ ] Stage list and tone approved by the user before coding.
+- [ ] Cup, materials, lighting unchanged unless asked; still renders with no console errors.
+- [ ] New stages work on desktop and mobile; reduced-motion fallback exists.
+- [ ] Pages deploy for `ember-site` is green and the URL is given to the user.
+- [ ] `cup-site` (v1) untouched.
