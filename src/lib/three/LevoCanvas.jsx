@@ -105,7 +105,7 @@ function Levo({ rig, onReady }) {
 
 		const idle = rig.reduce ? 0 : 0.012 * Math.sin(t * 1.4);
 		const lift = sm(0.1, 0.9, 1 - topT);
-		const cupY = 0.14 + (HOVER + 0.035 * Math.sin(2 * Math.PI * phase) + idle - 0.14) * lift;
+		const cupY = 0.07 + (HOVER + 0.035 * Math.sin(2 * Math.PI * phase) + idle - 0.07) * lift;
 		const cupRot = (-20 * Math.PI) / 180 - (rig.frame / 72) * 2 * Math.PI + (rig.mouse || 0);
 		cup.current.position.y = cupY;
 		cup.current.rotation.y = cupRot;
@@ -122,7 +122,7 @@ function Levo({ rig, onReady }) {
 		lid.current.rotation.set(Math.PI * flip, cupRot * (1 - sm(0.18, 0.4, T)), 0.35 * Math.sin(Math.PI * sm(0.2, 0.85, T)), 'YXZ');
 
 		// contact shadow under the cup: only while it rests on the desk
-		cupShadow.current.material.opacity = 0.3 * (1 - lift);
+		cupShadow.current.material.opacity = 0.18 * (1 - lift);
 		cupShadow.current.visible = lift < 0.99;
 
 		// the lid deforms: capping lid (skirt + plug over the rim) -> flat coaster slab as it flips and lands
@@ -160,7 +160,13 @@ function Levo({ rig, onReady }) {
 			</mesh>
 			{/* the lid; flipped, it is the coaster */}
 			<group ref={lid}>
-				<mesh ref={lidMesh} geometry={geo.lid} material={mats.lid} castShadow receiveShadow />
+				<mesh
+					ref={(m) => {
+						lidMesh.current = m;
+						// R3F assigns the geometry after construction; build the morph influences before the first render
+						if (m && !m.morphTargetInfluences) m.updateMorphTargets();
+					}}
+					geometry={geo.lid} material={mats.lid} castShadow receiveShadow />
 				<group ref={decals}>
 					<mesh geometry={geo.slot} material={mats.slot} />
 					<mesh geometry={geo.vent} material={mats.slot} />
@@ -217,19 +223,19 @@ export default function LevoCanvas({ rig, active = true, onReady }) {
 			style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
 		>
 			<Studio />
-			<hemisphereLight args={['#dfe9ff', '#3a322c', 0.45]} />
+			<hemisphereLight args={['#dfe9ff', '#3a322c', 0.3]} />
 			<directionalLight
-				position={[-2.6, 5.2, 2.2]}
-				intensity={1.5}
+				position={[-3.4, 4.2, 1.6]}
+				intensity={2.8}
 				color="#fff1de"
 				castShadow
 				shadow-mapSize={[1024, 1024]}
-				shadow-radius={7}
+				shadow-radius={5}
 				shadow-bias={-0.0004}
-				shadow-camera-left={-2}
-				shadow-camera-right={2}
-				shadow-camera-top={2}
-				shadow-camera-bottom={-2}
+				shadow-camera-left={-3.2}
+				shadow-camera-right={3.2}
+				shadow-camera-top={3.2}
+				shadow-camera-bottom={-3.2}
 				shadow-camera-near={1}
 				shadow-camera-far={12}
 			/>
