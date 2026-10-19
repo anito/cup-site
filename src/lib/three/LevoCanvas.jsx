@@ -94,7 +94,7 @@ function Levo({ rig, onReady }) {
 		/* sealed (cup + lid stacked, centred ~0.43 higher) -> coaster mode */
 		const T = clamp01(rig.lidT ?? 0);
 		const shift = -0.43 * (1 - sm(0.3, 1, T));
-		const s = k * (1 - 0.3 * ease); // zoomed out over the desk
+		const s = k * (1 - 0.1 * ease); // zoomed out over the desk
 		group.current.scale.setScalar(s);
 		group.current.position.set(dx, dy + TARGET_Y * (1 - s) + shift * s, 0);
 
@@ -155,7 +155,7 @@ function Levo({ rig, onReady }) {
 		<group ref={group}>
 			<Workshop ref={desk} />
 			<mesh ref={cupShadow} position={[0.04, 0.008, 0.06]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
-				<planeGeometry args={[1.75, 1.75]} />
+				<planeGeometry args={[1.5, 1.5]} />
 				<meshBasicMaterial map={blobTexture()} transparent depthWrite={false} toneMapped={false} />
 			</mesh>
 			{/* the lid; flipped, it is the coaster */}
