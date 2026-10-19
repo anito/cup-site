@@ -115,7 +115,7 @@ const GRAIN_FRAG = /* glsl */ `
 	float dome = 1.0 - smoothstep(0.0, 0.8, wk.x);
 	float fineN = vnoise(P * 150.0);
 	float pn = fbm3(P * 14.0);
-	diffuseColor.rgb *= (0.88 + 0.24 * pn) * (0.96 + 0.08 * wk.z) * (1.0 - 0.08 * crease) * (0.94 + 0.12 * fineN) * (0.97 + 0.06 * vnoise(P * 320.0));
+	diffuseColor.rgb *= (0.88 + 0.24 * pn) * (0.96 + 0.08 * wk.z) * (1.0 - 0.1 * crease) * (0.97 + 0.06 * fineN);
 `;
 
 function withLabel(material, tex, inject) {
@@ -191,15 +191,17 @@ export function createMaterials() {
 	   patina mottling and the brand debossed on the back. */
 	const brand = brandTexture();
 	const leatherParams = (repeat) => ({
-		color: linear(0.34, 0.108, 0.03),
-		roughness: 0.72,
+		color: linear(0.3, 0.095, 0.026),
+		roughness: 0.4,
 		metalness: 0,
-		sheen: 0.3,
-		sheenRoughness: 0.6,
-		sheenColor: linear(0.6, 0.32, 0.16),
+		clearcoat: 0.45,
+		clearcoatRoughness: 0.3,
+		sheen: 0.12,
+		sheenRoughness: 0.5,
+		sheenColor: linear(0.5, 0.24, 0.1),
 		bumpMap: leatherGrainTexture(),
 		bumpScale: 0,
-		envMapIntensity: 1.0
+		envMapIntensity: 1.1
 	});
 	const NORMAL_BUMP = `
 		normal = perturbNormalArb( - vViewPosition, normal, vec2( dFdx( hgt ), dFdy( hgt ) ) * 3.4, faceDirection );`;
@@ -255,15 +257,15 @@ export function createMaterials() {
 					diffuseColor.rgb *= 1.0 - 0.7 * br;
 
 					// relief: pebbles and creases, stamped letters pressed in, round raised thread, sunk holes
-					float hgt = 0.55 * (fbm3(P * 16.0) - 0.5) + 0.22 * (fbm3(P * 34.0) - 0.5)
+					float hgt = 0.3 * (fbm3(P * 14.0) - 0.5) + 0.07 * (fbm3(P * 40.0) - 0.5)
 						- 2.4 * stampSoft + 1.1 * st.thread * st.shade - 0.9 * st.hole - 0.65 * st.chan - 0.4 * seamLine
 						- 0.8 * br - 0.5 * (1.0 - edge);`
 				)
 				.replace(
 					'#include <roughnessmap_fragment>',
 					`#include <roughnessmap_fragment>
-					roughnessFactor = 0.74 + 0.08 * crease - 0.05 * dome;                 // matte nubuck
-					roughnessFactor = mix(roughnessFactor, 0.42, max(stamp, 1.0 - edge));    // compressed / burnished
+					roughnessFactor = 0.4 + 0.07 * crease - 0.04 * dome;                  // smooth, slightly glossy grain
+					roughnessFactor = mix(roughnessFactor, 0.26, max(stamp, 1.0 - edge));    // compressed / burnished
 					roughnessFactor = mix(roughnessFactor, 0.78, st.thread);                  // matte waxed thread`
 				)
 				.replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>' + NORMAL_BUMP);
@@ -298,12 +300,12 @@ export function createMaterials() {
 					diffuseColor.rgb *= 1.0 - 0.7 * st.hole;
 					vec3 threadCol = ${THREAD} * st.tint * (0.6 + 0.42 * st.twist) * (0.52 + 0.45 * st.shade);
 					diffuseColor.rgb = mix(diffuseColor.rgb, threadCol, st.thread);
-					float hgt = 0.55 * (fbm3(P * 16.0) - 0.5) + 0.22 * (fbm3(P * 34.0) - 0.5) + 1.1 * st.thread * st.shade - 0.9 * st.hole - 0.65 * st.chan;`
+					float hgt = 0.3 * (fbm3(P * 14.0) - 0.5) + 0.07 * (fbm3(P * 40.0) - 0.5) + 1.1 * st.thread * st.shade - 0.9 * st.hole - 0.65 * st.chan;`
 				)
 				.replace(
 					'#include <roughnessmap_fragment>',
 					`#include <roughnessmap_fragment>
-					roughnessFactor = 0.74 + 0.08 * crease - 0.05 * dome;
+					roughnessFactor = 0.4 + 0.07 * crease - 0.04 * dome;
 					roughnessFactor = mix(roughnessFactor, 0.8, st.thread);`
 				)
 				.replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>' + NORMAL_BUMP);
