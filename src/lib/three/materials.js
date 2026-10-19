@@ -138,13 +138,13 @@ export function createMaterials() {
 	/* anodised champagne titanium; the smoked label is matte black and barely reflective */
 	const shell = withLabel(
 		new MeshPhysicalMaterial({
-			color: linear(0.52, 0.45, 0.36),
-			metalness: 0.85,
-			roughness: 0.52,
+			color: linear(0.43, 0.39, 0.33),
+			metalness: 0.58,
+			roughness: 0.47,
 			anisotropy: 0,
 			bumpMap: lines,
-			bumpScale: 0.18,
-			envMapIntensity: 0.75
+			bumpScale: 0.12,
+			envMapIntensity: 0.8
 		}),
 		label,
 		function shellInject(shader) {
@@ -167,10 +167,10 @@ export function createMaterials() {
 	);
 
 	const liner = new MeshPhysicalMaterial({
-		color: linear(0.26, 0.27, 0.3),
-		metalness: 1,
-		roughness: 0.42,
-		envMapIntensity: 0.55
+		color: linear(0.34, 0.35, 0.38),
+		metalness: 0.75,
+		roughness: 0.5,
+		envMapIntensity: 0.5
 	});
 
 	/* the Halo: emissive, dimmed (not hidden) by the label so the ring reads through it */

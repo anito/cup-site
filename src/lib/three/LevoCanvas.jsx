@@ -87,7 +87,8 @@ function Levo({ rig, onReady }) {
 		const topT = clamp01(rig.topT ?? 0);
 		const ease = topT * topT * (3 - 2 * topT);
 		const elSide = ((19 + 11 * Math.sin(2 * Math.PI * phase)) * Math.PI) / 180;
-		const el = elSide + ((86 * Math.PI) / 180 - elSide) * ease;
+		const elBase = rig.elev !== undefined ? (rig.elev * Math.PI) / 180 : elSide;
+		const el = elBase + ((86 * Math.PI) / 180 - elBase) * ease;
 		camera.position.set(0, TARGET_Y + CAM_DIST * Math.sin(el), CAM_DIST * Math.cos(el));
 		camera.lookAt(0, TARGET_Y, 0);
 

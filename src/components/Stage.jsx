@@ -330,7 +330,7 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 					role="img"
 					aria-label="A champagne-titanium takeaway cup with a leather sleeve, a full-height smoked LEVO label and a glowing Thermal Halo band, its lid flipping into a coaster"
 				>
-					<SceneBoundary onFail={handleGlReady} fallback={asset('/hero-2000.webp')} className={styles.fallback}>
+					<SceneBoundary onFail={handleGlReady} fallback={asset('/anatomy.webp')} className={styles.fallback}>
 						<LevoCanvas rig={rig} active={active} onReady={handleGlReady} />
 					</SceneBoundary>
 				</div>

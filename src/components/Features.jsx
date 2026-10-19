@@ -9,32 +9,32 @@ const features = [
 	{
 		title: 'The Thermal Halo',
 		text: 'A recessed band of light that shifts from cyan to amber with the temperature of your drink. Twelve sensors read it, so the colour is always true.',
-		x: 48,
-		y: 46
+		x: 50,
+		y: 52
 	},
 	{
 		title: 'Glowing lip',
 		text: 'A hair-thin line of light traces the rim while Levo is holding your temperature, and fades the moment you lift it away.',
-		x: 30,
-		y: 13
+		x: 27,
+		y: 12
 	},
 	{
 		title: 'The lid is the coaster',
 		text: 'Press-fit lid on top for the commute; flip it and it flexes flat into a leather coaster with glowing inlay rings and six millimetres of magnetic float. One part, two jobs.',
 		x: 50,
-		y: 80
+		y: 82
 	},
 	{
 		title: 'Cognac leather sleeve',
 		text: 'One piece of full-grain leather, saddle-stitched by hand along both edges and up the seam. Where it covers the cup’s label, the Levo lettering is stamped into the leather. It keeps the cup comfortable at 65 °C and replaces the handle.',
-		x: 36,
-		y: 30
+		x: 27,
+		y: 32
 	},
 	{
 		title: 'Induction liner',
 		text: 'Double-wall brushed steel. Heat is induced in the liner itself, so the drink warms evenly with no hot spots and no cord.',
-		x: 55,
-		y: 10
+		x: 56,
+		y: 9
 	}
 ];
 
@@ -53,11 +53,11 @@ export default function Features() {
 				<Reveal as="figure" className={styles.fig}>
 					{/* eslint-disable-next-line @next/next/no-img-element */}
 					<img
-						src={asset('/hero-2000.webp')}
+						src={asset('/anatomy.webp')}
 						width="1400"
 						height="1400"
 						loading="lazy"
-						alt="Close render of the Levo takeaway cup showing the Thermal Halo band, glowing lip, leather sleeve, steel liner and the flipped lid acting as a levitating coaster"
+						alt="Render of the Levo takeaway cup showing the Thermal Halo band, glowing lip, leather sleeve, steel liner and the flipped lid acting as a levitating coaster"
 					/>
 					{features.map((f, i) => (
 						<button

@@ -54,7 +54,7 @@ export default function Reserve() {
 				<div className={styles.art} aria-hidden="true">
 					<div className={styles.orb} />
 					{/* eslint-disable-next-line @next/next/no-img-element */}
-					<img src={asset('/hero-2000.webp')} width="1000" height="1000" loading="lazy" alt="" />
+					<img src={asset('/reserve.webp')} width="1000" height="1000" loading="lazy" alt="" />
 				</div>
 			</Reveal>
 		</section>

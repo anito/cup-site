@@ -32,9 +32,9 @@ Levo hovers above its own lid, flipped into a wireless coaster, on a six-millime
 - `src/app/`: Next.js App Router (static export). `src/components/Stage.jsx` holds the GSAP ScrollTrigger timeline and the pinned scene; the other sections are small client components with CSS Modules.
 - `src/lib/three/`: the **live 3D cup** (React Three Fiber). `geometry.js` is a JS port of the Blender parametric model (lathe body, handle tube, dock, glows, label texture), `materials.js` holds the titanium / smoked-label / emissive-halo materials (the label is mapped in the shader from object-space position), `LevoCanvas.jsx` is the scene (strip-softbox environment, camera, hover/rotation). The DOM `.cup` box in `Stage.jsx` is the layout driver: GSAP moves and scales it, and the 3D group follows its box every frame.
 - `src/components/Steam.jsx`: the WebGL smoke shader (see above).
-- `blender/build_levo.py`: the original Blender source (cup, dock, procedural shaders, lighting, animation) with `bpy` (`pip install bpy`, Python 3.13). Modes: `build`, `test`, `frames`, `still`. It is used for the hero still and social image; the page itself renders the cup live.
-- `blender/export_web.py`: converts the hero still to WebP (adds a bloom glow) and builds the social card.
-- `public/`: `hero-2000.webp` and `og.jpg` (Blender renders), favicon.
+- `blender/build_levo.py`: the original Blender source (cup, dock, procedural shaders, lighting, animation) with `bpy` (`pip install bpy`, Python 3.13). Modes: `build`, `test`, `frames`, `still`. It is the original model; the page (and its stills) render the cup live in the browser.
+- `src/app/studio/` and `scripts/capture-stills.mjs`: the site's still images (`public/anatomy.webp`, `public/reserve.webp`, `public/og.jpg`) are captured from the live scene (a bare, unlinked `/studio` route rendered in headless Chromium with a transparent background), so they share the hero's exact materials and lighting. To regenerate: serve `out/` (e.g. `npx serve out -l 4175`) and run `node scripts/capture-stills.mjs http://localhost:4175 ./out-stills`, then crop/convert to WebP.
+- `public/`: the captured stills and the favicon.
 
 ## Run the site
 
@@ -43,13 +43,6 @@ npm install
 npm run dev                      # http://localhost:3000
 npm run build                    # static export in out/
 BASE_PATH=/cup-site npm run build   # for GitHub Pages project hosting
-```
-
-## Re-render the Blender images
-
-```bash
-python blender/build_levo.py still hero 2000 160 out/hero.png
-python blender/export_web.py out/hero.png public
 ```
 
 The product, copy, price and sign-up form are illustrative; the form sends nothing.
