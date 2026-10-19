@@ -138,13 +138,13 @@ export function createMaterials() {
 	/* anodised champagne titanium; the smoked label is matte black and barely reflective */
 	const shell = withLabel(
 		new MeshPhysicalMaterial({
-			color: linear(0.8, 0.66, 0.49),
+			color: linear(0.6, 0.5, 0.38),
 			metalness: 1,
-			roughness: 0.44,
-			anisotropy: 0.6,
+			roughness: 0.3,
+			anisotropy: 0,
 			bumpMap: lines,
-			bumpScale: 0.6,
-			envMapIntensity: 2.1
+			bumpScale: 0.25,
+			envMapIntensity: 1.25
 		}),
 		label,
 		function shellInject(shader) {

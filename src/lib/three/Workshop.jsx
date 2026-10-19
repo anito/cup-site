@@ -79,8 +79,8 @@ export default function Workshop({ ref }) {
 	const geo = useMemo(() => new BoxGeometry(MAT_W, 0.05, MAT_D), []);
 	return (
 		<group ref={ref}>
-			<mesh geometry={geo} position={[0, -0.025, 0]}>
-				<meshStandardMaterial map={map} color="#6a6a6a" roughness={0.92} metalness={0} envMapIntensity={0.28} />
+			<mesh geometry={geo} position={[0, -0.025, 0]} receiveShadow>
+				<meshStandardMaterial map={map} color="#a8a8a8" roughness={0.8} metalness={0} envMapIntensity={0.7} />
 			</mesh>
 		</group>
 	);

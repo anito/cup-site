@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer } from '@react-three/drei';
-import { PlaneGeometry, CircleGeometry } from 'three';
+import { ACESFilmicToneMapping, PlaneGeometry, CircleGeometry } from 'three';
 import { cupBody, haloShell, lipGlow, sleeve as sleeveGeometry, lidBody, lidRing, sipSlot, drinkDisc, LID } from './geometry.js';
 import { createMaterials } from './materials.js';
 import Workshop, { blobTexture } from './Workshop.jsx';
@@ -122,7 +122,7 @@ function Levo({ rig, onReady }) {
 		lid.current.rotation.set(Math.PI * flip, cupRot * (1 - sm(0.18, 0.4, T)), 0.35 * Math.sin(Math.PI * sm(0.2, 0.85, T)), 'YXZ');
 
 		// contact shadow under the cup: only while it rests on the desk
-		cupShadow.current.material.opacity = 0.75 * (1 - lift);
+		cupShadow.current.material.opacity = 0.3 * (1 - lift);
 		cupShadow.current.visible = lift < 0.99;
 
 		// the lid deforms: capping lid (skirt + plug over the rim) -> flat coaster slab as it flips and lands
@@ -160,7 +160,7 @@ function Levo({ rig, onReady }) {
 			</mesh>
 			{/* the lid; flipped, it is the coaster */}
 			<group ref={lid}>
-				<mesh ref={lidMesh} geometry={geo.lid} material={mats.lid} />
+				<mesh ref={lidMesh} geometry={geo.lid} material={mats.lid} castShadow receiveShadow />
 				<group ref={decals}>
 					<mesh geometry={geo.slot} material={mats.slot} />
 					<mesh geometry={geo.vent} material={mats.slot} />
@@ -173,8 +173,8 @@ function Levo({ rig, onReady }) {
 
 			{/* the cup */}
 			<group ref={cup}>
-				<mesh geometry={body.geometry} material={[mats.shell, mats.liner, mats.halo]} />
-				<mesh geometry={geo.sleeve} material={mats.sleeve} />
+				<mesh geometry={body.geometry} material={[mats.shell, mats.liner, mats.halo]} castShadow receiveShadow />
+				<mesh geometry={geo.sleeve} material={mats.sleeve} castShadow receiveShadow />
 				<mesh geometry={geo.drink} material={mats.drink} />
 				<mesh geometry={geo.shells[0]} material={mats.haloGlow[0]} renderOrder={3} />
 				<mesh geometry={geo.shells[1]} material={mats.haloGlow[1]} renderOrder={3} />
@@ -185,16 +185,18 @@ function Levo({ rig, onReady }) {
 }
 
 function Studio() {
-	/* strip/softbox "lightformers": the reflections that make the metal read as machined */
+	/* a photo-studio "room" of lightformers: a huge soft ceiling box, tall strip boxes left and right for
+	   long metal highlights, a front fill, cyan/violet kickers behind, and a warm bounce from the floor */
 	return (
-		<Environment resolution={512} frames={1}>
-			<color attach="background" args={['#05070b']} />
-			<Lightformer form="rect" intensity={4} position={[0, 6, 0]} scale={[10, 10, 1]} target={[0, 0, 0]} />
-			<Lightformer form="rect" intensity={9} color="#fff4e6" position={[-5, 1.5, 2.5]} scale={[0.9, 9, 1]} target={[0, 0.5, 0]} />
-			<Lightformer form="rect" intensity={6.5} color="#eaf3ff" position={[5, 1.5, 3]} scale={[0.8, 9, 1]} target={[0, 0.5, 0]} />
-			<Lightformer form="rect" intensity={6} color="#4fc8ff" position={[5, 2, -5]} scale={[1, 8, 1]} target={[0, 0.5, 0]} />
-			<Lightformer form="rect" intensity={5} color="#a07bff" position={[-5, 2, -5]} scale={[1, 8, 1]} target={[0, 0.5, 0]} />
-			<Lightformer form="rect" intensity={1.6} position={[0, 0.5, 7]} scale={[8, 4, 1]} target={[0, 0.5, 0]} />
+		<Environment resolution={512} frames={1} environmentIntensity={1.0}>
+			<color attach="background" args={['#030405']} />
+			<Lightformer form="rect" intensity={3.5} position={[0, 7, 0]} scale={[5, 5, 1]} target={[0, 0, 0]} />
+			<Lightformer form="rect" intensity={14} color="#fff4e6" position={[-6, 2, 3]} scale={[0.55, 10, 1]} target={[0, 0.5, 0]} />
+			<Lightformer form="rect" intensity={10} color="#eaf3ff" position={[6, 2, 3.5]} scale={[0.5, 10, 1]} target={[0, 0.5, 0]} />
+			<Lightformer form="rect" intensity={2.2} color="#fff7ee" position={[0, 1.5, 8]} scale={[5, 3, 1]} target={[0, 0.5, 0]} />
+			<Lightformer form="rect" intensity={6} color="#4fc8ff" position={[6, 2, -6]} scale={[1.2, 9, 1]} target={[0, 0.5, 0]} />
+			<Lightformer form="rect" intensity={5} color="#a07bff" position={[-6, 2, -6]} scale={[1.2, 9, 1]} target={[0, 0.5, 0]} />
+			<Lightformer form="rect" intensity={1.4} color="#ffd9b0" position={[0, -3, 2]} rotation-x={Math.PI / 2} scale={[14, 10, 1]} target={[0, 0, 0]} />
 		</Environment>
 	);
 }
@@ -202,8 +204,12 @@ function Studio() {
 export default function LevoCanvas({ rig, active = true, onReady }) {
 	return (
 		<Canvas
-			onCreated={() => requestAnimationFrame(() => onReady?.())}
-			flat
+			onCreated={({ gl }) => {
+				gl.toneMapping = ACESFilmicToneMapping;
+				gl.toneMappingExposure = 0.88;
+				requestAnimationFrame(() => onReady?.());
+			}}
+			shadows="soft"
 			dpr={[1, 2]}
 			frameloop={active ? 'always' : 'demand'}
 			gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
@@ -211,6 +217,22 @@ export default function LevoCanvas({ rig, active = true, onReady }) {
 			style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
 		>
 			<Studio />
+			<hemisphereLight args={['#dfe9ff', '#2a2420', 0.2]} />
+			<directionalLight
+				position={[-2.6, 5.2, 2.2]}
+				intensity={1.5}
+				color="#fff1de"
+				castShadow
+				shadow-mapSize={[1024, 1024]}
+				shadow-radius={7}
+				shadow-bias={-0.0004}
+				shadow-camera-left={-2}
+				shadow-camera-right={2}
+				shadow-camera-top={2}
+				shadow-camera-bottom={-2}
+				shadow-camera-near={1}
+				shadow-camera-far={12}
+			/>
 			<Levo rig={rig} onReady={onReady} />
 		</Canvas>
 	);

@@ -163,7 +163,7 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 			ctx = gsap.context(() => {
 				gsap.set(cup, { xPercent: -50, yPercent: -50 });
 				const cupY = () => (isMobile() ? -innerHeight * 0.1 : -innerHeight * 0.06);
-				gsap.set(cup, { y: cupY, x: () => (isMobile() ? 0 : innerWidth * 0.2) });
+				gsap.set(cup, { y: cupY });
 				gsap.set(stage, { '--bg': PAL[0].bg, '--accent': PAL[0].accent });
 
 				/* ambient loops: orbit rings, dust */
