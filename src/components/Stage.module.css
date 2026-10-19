@@ -393,3 +393,24 @@
 	height: 100%;
 	object-fit: contain;
 }
+
+.story .parts {
+	margin-top: 1.2rem;
+	display: grid;
+	gap: 0.45rem;
+	font-family: var(--display);
+	font-size: 0.9rem;
+}
+.story .parts li {
+	display: flex;
+	align-items: center;
+	gap: 0.8rem;
+	padding: 0.45rem 0;
+	border-top: 1px solid var(--line);
+}
+.story .parts i {
+	font-style: normal;
+	font-size: 0.68rem;
+	letter-spacing: 0.18em;
+	color: var(--accent);
+}

@@ -39,45 +39,72 @@ const chapters = [
 	},
 	{
 		num: '02',
-		title: 'Flip',
+		title: 'Take apart',
 		side: 'left',
+		text: 'Four parts, no screws, no feelings. It comes apart like a very polite puzzle.',
+		parts: ['Leather lid', 'Stitched sleeve', 'Anodised body', 'Induction liner'],
+		ad: ['Fun fact', 'Reassembles in 4 seconds, or your money back*'],
+		fine: '*we have not tested this'
+	},
+	{
+		num: '03',
+		title: 'Flip',
+		side: 'right',
 		text: 'One lid, two lives. Lift it off, flip it over, set it down: the lid flexes flat and is now a wireless leather coaster.',
 		ad: ['New', 'Replaces your coaster drawer']
 	},
 	{
-		num: '03',
+		num: '04',
 		title: 'Float',
-		side: 'right',
+		side: 'left',
 		text: 'Six millimetres above everything. A magnetic field lifts Levo off its lid-coaster and lets it spin freely. Lift it away and it sleeps — set it down and it wakes.',
 		ad: ['Desk Mode', '15 W wireless, zero cables']
 	},
 	{
-		num: '04',
+		num: '05',
 		title: 'Halo',
-		side: 'left',
+		side: 'right',
 		text: 'The Thermal Halo shifts from cyan to amber as your drink warms, and induction in the steel liner holds your chosen temperature, from 20 to 80 °C, for four hours.',
 		ad: ['As featured on', 'The Imaginary Morning Show']
 	},
 	{
-		num: '05',
+		num: '06',
+		title: 'Stitched',
+		side: 'left',
+		text: 'Every stitch was placed by a patient robot named Gerald. He asked us to mention that he has no hobbies.',
+		ad: ['Handmade-ish', '1,840 stitches. Gerald counted.']
+	},
+	{
+		num: '07',
+		title: 'Lights out',
+		side: 'right',
+		text: 'Turn off the lamp. The halo does the rest: a night light that also happens to be your tea. Do not tell the tea.',
+		ad: ['Night Mode', 'Glows politely until 2 a.m.']
+	},
+	{
+		num: '08',
 		title: 'Pack',
 		side: 'center',
 		text: 'Leaving? Lift the cup, flip the lid back on, and the halo sleeps. Come back and your drink is exactly as you left it.',
 		ad: ['Founders’ offer', 'Engraved lid + spare sleeve, free']
 	}
 ];
-const railLabels = ['Intro', 'Seal', 'Flip', 'Float', 'Halo', 'Pack'];
+const railLabels = ['Intro', 'Seal', 'Parts', 'Flip', 'Float', 'Halo', 'Stitch', 'Night', 'Pack'];
 
 /* scene palette, one entry per chapter */
 const PAL = [
 	{ bg: '#05070b', accent: '#3fd0ff' },
 	{ bg: '#060a14', accent: '#5b8cff' },
+	{ bg: '#0c0716', accent: '#b36bff' },
 	{ bg: '#0b0714', accent: '#d05cff' },
 	{ bg: '#051012', accent: '#3fe0c8' },
 	{ bg: '#120905', accent: '#ffab3c' },
+	{ bg: '#150a07', accent: '#ff7a4a' },
+	{ bg: '#020307', accent: '#6fe3ff' },
 	{ bg: '#04060a', accent: '#3fd0ff' }
 ];
-const AT = [0, 0.1, 0.27, 0.45, 0.63, 0.82];
+const AT = [0, 0.065, 0.16, 0.27, 0.38, 0.5, 0.62, 0.74, 0.88];
+const PIN_VH = 12;
 
 export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 	const stageRef = useRef(null);
@@ -95,7 +122,7 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 	const chapterRefs = useRef([]);
 
 	/* shared with the 3D scene, which reads it every frame (no React re-render) */
-	const rig = useRef({ frame: 0, mouse: 0, lidT: 0, topT: 1, cupEl: null, reduce: false }).current;
+	const rig = useRef({ frame: 0, mouse: 0, lidT: 0, topT: 1, expl: 0, macro: 0, night: 0, cupEl: null, reduce: false }).current;
 
 	const [temp, setTemp] = useState(22);
 	const [railIndex, setRailIndex] = useState(0);
@@ -193,7 +220,7 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 					scrollTrigger: {
 						trigger: stage.parentElement,
 						start: 'top top',
-						end: () => '+=' + Math.round(innerHeight * 7.4),
+						end: () => '+=' + Math.round(innerHeight * PIN_VH),
 						pin: stage,
 						scrub: 0.9,
 						anticipatePin: 1,
@@ -201,7 +228,7 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 						onUpdate: (self) => {
 							const p = self.progress;
 							heroWeight = clamp(1 - p / 0.06, 0, 1);
-							const k = clamp((p - 0.3) / 0.42, 0, 1);
+							const k = clamp((p - 0.3) / 0.38, 0, 1);
 							setTemp(Math.round(22 + 43 * (k * k * (3 - 2 * k))));
 							let idx = 0;
 							AT.forEach((t, i) => {
@@ -212,7 +239,7 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 					}
 				});
 
-				tl.to(rig, { frame: 144, duration: 1 }, 0);
+				tl.to(rig, { frame: 216, duration: 1 }, 0);
 				// the opening: a top-down view of the saddlery desk that tilts into the side view
 				tl.to(rig, { topT: 0, duration: 0.1, ease: 'power2.inOut' }, 0.005);
 				tl.to(heroRef.current, { opacity: 0, y: -30, duration: 0.06, ease: 'power1.in' }, 0.015);
@@ -221,21 +248,33 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 				tl.to(floorRef.current, { backgroundPositionY: '1600px', duration: 1 }, 0);
 
 				const m = isMobile();
+				const yy = m ? () => -innerHeight * 0.2 : () => 0;
 				const path = [
-					{ x: m ? 0 : vw(-23), y: m ? () => -innerHeight * 0.2 : () => 0, scale: m ? 0.92 : 1.04 },
-					{ x: 0, y: m ? () => -innerHeight * 0.2 : () => 0, scale: m ? 0.95 : 1.0 },
-					{ x: m ? 0 : vw(-23), y: m ? () => -innerHeight * 0.2 : () => 0, scale: m ? 0.98 : 1.1 },
-					{ x: m ? 0 : vw(22), y: m ? () => -innerHeight * 0.2 : () => -innerHeight * 0.01, scale: m ? 1.02 : 1.16 },
-					{ x: 0, y: m ? () => -innerHeight * 0.22 : () => -innerHeight * 0.1, scale: m ? 1.0 : 0.88 }
+					{ x: m ? 0 : vw(-23), y: yy, scale: m ? 0.92 : 1.04 }, // seal
+					{ x: m ? 0 : vw(22), y: yy, scale: m ? 0.72 : 0.78 }, // take apart
+					{ x: m ? 0 : vw(-23), y: yy, scale: m ? 0.98 : 1.1 }, // flip
+					{ x: m ? 0 : vw(22), y: yy, scale: m ? 1.02 : 1.16 }, // float
+					{ x: m ? 0 : vw(-22), y: yy, scale: m ? 1.0 : 1.14 }, // halo
+					{ x: m ? 0 : vw(22), y: yy, scale: m ? 1.0 : 1.0 }, // stitched (the scene zooms in itself)
+					{ x: m ? 0 : vw(-22), y: yy, scale: m ? 1.0 : 1.1 }, // night
+					{ x: 0, y: m ? () => -innerHeight * 0.22 : () => -innerHeight * 0.1, scale: m ? 1.0 : 0.88 } // pack
 				];
 				path.forEach((p, i) => tl.to(cup, { ...p, duration: 0.09, ease: 'power2.inOut' }, AT[i + 1] - 0.055));
 				// the lid: off and flipped into the coaster during "Flip", back on during "Pack"
-				tl.to(rig, { lidT: 1, duration: 0.17, ease: 'none' }, AT[2] - 0.01);
-				tl.to(rig, { lidT: 0, duration: 0.15, ease: 'none' }, AT[5] - 0.02);
+				tl.to(rig, { lidT: 1, duration: 0.17, ease: 'none' }, AT[3] - 0.01);
+				tl.to(rig, { lidT: 0, duration: 0.15, ease: 'none' }, AT[8] - 0.02);
+				// exploded view during "Take apart"
+				tl.to(rig, { expl: 1, duration: 0.05, ease: 'power2.out' }, AT[2] - 0.01);
+				tl.to(rig, { expl: 0, duration: 0.05, ease: 'power2.in' }, AT[3] - 0.07);
+				// macro on the stitching, then lights out
+				tl.to(rig, { macro: 1, duration: 0.06, ease: 'power2.inOut' }, AT[6] - 0.02);
+				tl.to(rig, { macro: 0, duration: 0.06, ease: 'power2.inOut' }, AT[7] - 0.07);
+				tl.to(rig, { night: 1, duration: 0.07, ease: 'power2.inOut' }, AT[7] - 0.03);
+				tl.to(rig, { night: 0, duration: 0.07, ease: 'power2.inOut' }, AT[8] - 0.08);
 				PAL.slice(1).forEach((p, i) =>
 					tl.to(stage, { '--bg': p.bg, '--accent': p.accent, duration: 0.09, ease: 'power1.inOut' }, AT[i + 1] - 0.06)
 				);
-				tl.to(dustRef.current, { opacity: 1, duration: 0.05 }, AT[3] - 0.02);
+				tl.to(dustRef.current, { opacity: 1, duration: 0.05 }, AT[4] - 0.02);
 				tl.fromTo([r1, r3], { scale: 0.9 }, { scale: 1.25, duration: 1 }, 0);
 
 				chapterRefs.current.forEach((el, i) => {
@@ -371,6 +410,16 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 						<span className={styles.num}>{c.num}</span>
 						<h2>{c.title}</h2>
 						<p>{c.text}</p>
+						{c.parts && (
+							<ul className={styles.parts}>
+								{c.parts.map((x, k) => (
+									<li key={x}>
+										<i>{String(k + 1).padStart(2, '0')}</i>
+										{x}
+									</li>
+								))}
+							</ul>
+						)}
 						<p className={styles.ad}>
 							<b>{c.ad[0]}</b>
 							<span>{c.ad[1]}</span>

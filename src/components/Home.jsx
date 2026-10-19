@@ -5,6 +5,8 @@ import Preloader from './Preloader';
 import Nav from './Nav';
 import Stage from './Stage';
 import Marquee from './Marquee';
+import Manifesto from './Manifesto';
+import Reviews from './Reviews';
 import Promo from './Promo';
 import Features from './Features';
 import Specs from './Specs';
@@ -28,7 +30,9 @@ export default function Home() {
 			<Nav />
 			<main id="top">
 				<Stage onProgress={onProgress} onReady={onReady} />
+				<Manifesto />
 				<Marquee />
+				<Reviews />
 				<Promo />
 				<Features />
 				<Specs />

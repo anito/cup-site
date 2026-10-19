@@ -17,6 +17,8 @@ const UNITS_ACROSS = 2.2; // world units spanned by the square the frames used t
    then slide in underneath as the coaster. The same curve runs backwards to put it back on. */
 const SIDE = 1.25;
 const LIFT = 0.55;
+/* the key light is created in the canvas root; the scene animates it through this shared ref */
+const sunRef = { current: null };
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 const sm = (a, b, x) => {
 	const t = clamp01((x - a) / (b - a));
@@ -27,6 +29,7 @@ function Levo({ rig, onReady }) {
 	const group = useRef();
 	const cup = useRef();
 	const lid = useRef();
+	const sleeveRef = useRef();
 	const desk = useRef();
 	const cupShadow = useRef();
 	const lidMesh = useRef();
@@ -95,9 +98,11 @@ function Levo({ rig, onReady }) {
 		/* sealed (cup + lid stacked, centred ~0.43 higher) -> coaster mode */
 		const T = clamp01(rig.lidT ?? 0);
 		const shift = -0.43 * (1 - sm(0.3, 1, T));
-		const s = k * (1 - 0.1 * ease); // zoomed out over the desk
+		const macro = sm(0, 1, clamp01(rig.macro ?? 0));
+		const s = k * (1 - 0.1 * ease) * (1 + 1.7 * macro); // zoomed out over the desk, or in on the stitching
+		const pivot = TARGET_Y + (0.68 - TARGET_Y) * macro;
 		group.current.scale.setScalar(s);
-		group.current.position.set(dx, dy + TARGET_Y * (1 - s) + shift * s, 0);
+		group.current.position.set(dx, dy + pivot * (1 - s) + shift * s, 0);
 
 		// the desk drops away as the camera tilts
 		const away = sm(0.15, 1, 1 - topT);
@@ -118,7 +123,11 @@ function Levo({ rig, onReady }) {
 		const back = sm(0.85, 1, T);
 		const seatY = cupY + LID.seat;
 		const flip = sm(0.3, 0.8, T);
-		lid.current.position.set(SIDE * side * (1 - back), (seatY + LIFT * lidLift) * (1 - down), 0);
+		const expl = sm(0, 1, clamp01(rig.expl ?? 0));
+		lid.current.position.set(SIDE * side * (1 - back), (seatY + LIFT * lidLift) * (1 - down) + 0.82 * expl, 0);
+		// exploded view: the sleeve floats up and turns slowly, the lid hovers above it
+		sleeveRef.current.position.y = 0.4 * expl;
+		sleeveRef.current.rotation.y = 0.9 * expl;
 		// yaw follows the cup while seated; the coaster is rotationally symmetric, so it just lets go
 		lid.current.rotation.set(Math.PI * flip, cupRot * (1 - sm(0.18, 0.4, T)), 0.35 * Math.sin(Math.PI * sm(0.2, 0.85, T)), 'YXZ');
 
@@ -145,6 +154,15 @@ function Levo({ rig, onReady }) {
 		mats.lipGlow.opacity = 0.12 * halo;
 		mats.ring.color.set(0x4fd2ff).multiplyScalar(0.12 + 0.88 * dockOn);
 		mats.dockGlow.opacity = 0.9 * dockOn;
+
+		// night mode: the room goes dark, the halo and rings take over
+		const night = sm(0, 1, clamp01(rig.night ?? 0));
+		state.gl.toneMappingExposure = 0.88 * (1 - 0.8 * night);
+		if (sunRef.current) sunRef.current.intensity = 2.8 * (1 - 0.95 * night);
+		mats.halo.color.setScalar(halo * (1 + 1.4 * night));
+		mats.haloGlow[0].opacity = (0.12 + 0.3 * night) * halo;
+		mats.haloGlow[1].opacity = (0.06 + 0.22 * night) * halo;
+		mats.lipGlow.opacity = (0.12 + 0.28 * night) * halo;
 
 		if (!readyRef.current) {
 			readyRef.current = true;
@@ -181,7 +199,9 @@ function Levo({ rig, onReady }) {
 			{/* the cup */}
 			<group ref={cup}>
 				<mesh geometry={body.geometry} material={[mats.shell, mats.liner, mats.halo]} castShadow receiveShadow />
-				<mesh geometry={geo.sleeve} material={mats.sleeve} castShadow receiveShadow />
+				<group ref={sleeveRef}>
+					<mesh geometry={geo.sleeve} material={mats.sleeve} castShadow receiveShadow />
+				</group>
 				<mesh geometry={geo.drink} material={mats.drink} />
 				<mesh geometry={geo.shells[0]} material={mats.haloGlow[0]} renderOrder={3} />
 				<mesh geometry={geo.shells[1]} material={mats.haloGlow[1]} renderOrder={3} />
@@ -226,6 +246,7 @@ export default function LevoCanvas({ rig, active = true, onReady }) {
 			<Studio />
 			<hemisphereLight args={['#dfe9ff', '#3a322c', 0.3]} />
 			<directionalLight
+				ref={(l) => (sunRef.current = l)}
 				position={[-3.4, 4.2, 1.6]}
 				intensity={2.8}
 				color="#fff1de"

@@ -115,7 +115,7 @@ const GRAIN_FRAG = /* glsl */ `
 	float dome = 1.0 - smoothstep(0.0, 0.8, wk.x);
 	float fineN = vnoise(P * 150.0);
 	float pn = fbm3(P * 14.0);
-	diffuseColor.rgb *= (0.88 + 0.24 * pn) * (0.96 + 0.08 * wk.z) * (1.0 - 0.1 * crease) * (0.97 + 0.06 * fineN);
+	diffuseColor.rgb *= (0.88 + 0.24 * pn) * (0.985 + 0.03 * wk.z) * (1.0 - 0.03 * crease) * (0.97 + 0.06 * fineN);
 `;
 
 function withLabel(material, tex, inject) {
