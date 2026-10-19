@@ -1,14 +1,32 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Component, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { getMotion } from '@/lib/motion';
 import Hud from './Hud';
 import Steam from './Steam';
+import { asset } from '@/lib/url';
 import styles from './Stage.module.css';
 
 /* the live 3D cup (React Three Fiber); client-only, loaded on demand */
 const LevoCanvas = dynamic(() => import('@/lib/three/LevoCanvas'), { ssr: false });
+
+/* if the 3D scene throws (no WebGL, a shader or texture failure), release the loader and show the still render */
+class SceneBoundary extends Component {
+	state = { failed: false };
+	static getDerivedStateFromError() {
+		return { failed: true };
+	}
+	componentDidCatch(err) {
+		console.error('Levo 3D scene failed:', err);
+		this.props.onFail?.();
+	}
+	render() {
+		if (!this.state.failed) return this.props.children;
+		// eslint-disable-next-line @next/next/no-img-element
+		return <img className={this.props.className} src={this.props.fallback} alt="" />;
+	}
+}
 
 const chapters = [
 	{
@@ -96,6 +114,13 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 		}, 90);
 		return () => clearInterval(id);
 	}, [onProgress]);
+
+	/* hard limit: never leave the visitor on the loader, whatever the 3D scene does */
+	useEffect(() => {
+		const id = setTimeout(() => handleGlReady(), 7000);
+		return () => clearTimeout(id);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	const handleGlReady = () => {
 		if (readyRef.current) return;
@@ -305,7 +330,9 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 					role="img"
 					aria-label="A champagne-titanium takeaway cup with a leather sleeve, a full-height smoked LEVO label and a glowing Thermal Halo band, its lid flipping into a coaster"
 				>
-					<LevoCanvas rig={rig} active={active} onReady={handleGlReady} />
+					<SceneBoundary onFail={handleGlReady} fallback={asset('/hero-2000.webp')} className={styles.fallback}>
+						<LevoCanvas rig={rig} active={active} onReady={handleGlReady} />
+					</SceneBoundary>
 				</div>
 
 				<Hud temp={temp} ref={hudRef} />

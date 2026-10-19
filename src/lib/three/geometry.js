@@ -60,6 +60,19 @@ export function chaikin(points, labels, passes) {
 	return { points, labels };
 }
 
+/* CanvasRenderingContext2D.roundRect is missing in older Safari; a plain-arcs fallback */
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+	CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+		const rr = Math.min(typeof r === 'number' ? r : (r && r[0]) || 0, w / 2, h / 2);
+		this.moveTo(x + rr, y);
+		this.arcTo(x + w, y, x + w, y + h, rr);
+		this.arcTo(x + w, y + h, x, y + h, rr);
+		this.arcTo(x, y + h, x, y, rr);
+		this.arcTo(x, y, x + w, y, rr);
+		this.closePath();
+	};
+}
+
 /* angle -> colour along the Halo band: cyan at angle 0 (+x) to amber on the far side */
 const RAMP = [
 	[0.0, [0.0, 0.62, 1.0]],

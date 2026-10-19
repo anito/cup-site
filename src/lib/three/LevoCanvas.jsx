@@ -202,9 +202,10 @@ function Studio() {
 export default function LevoCanvas({ rig, active = true, onReady }) {
 	return (
 		<Canvas
+			onCreated={() => requestAnimationFrame(() => onReady?.())}
 			flat
 			dpr={[1, 2]}
-			frameloop={active ? 'always' : 'never'}
+			frameloop={active ? 'always' : 'demand'}
 			gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
 			camera={{ fov: 24, near: 0.1, far: 60, position: [0, 1.5, 5.2] }}
 			style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
