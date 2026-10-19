@@ -105,7 +105,7 @@ function Levo({ rig, onReady }) {
 
 		const idle = rig.reduce ? 0 : 0.012 * Math.sin(t * 1.4);
 		const lift = sm(0.1, 0.9, 1 - topT);
-		const cupY = 0.015 + (HOVER + 0.035 * Math.sin(2 * Math.PI * phase) + idle - 0.015) * lift;
+		const cupY = 0.14 + (HOVER + 0.035 * Math.sin(2 * Math.PI * phase) + idle - 0.14) * lift;
 		const cupRot = (-20 * Math.PI) / 180 - (rig.frame / 72) * 2 * Math.PI + (rig.mouse || 0);
 		cup.current.position.y = cupY;
 		cup.current.rotation.y = cupRot;
@@ -139,9 +139,9 @@ function Levo({ rig, onReady }) {
 		const halo = 0.3 + 0.7 * sm(0.3, 1, T);
 		const dockOn = sm(0.82, 1, T);
 		mats.halo.color.setScalar(halo);
-		mats.haloGlow[0].opacity = 0.3 * halo;
-		mats.haloGlow[1].opacity = 0.13 * halo;
-		mats.lipGlow.opacity = 0.22 * halo;
+		mats.haloGlow[0].opacity = 0.12 * halo;
+		mats.haloGlow[1].opacity = 0.06 * halo;
+		mats.lipGlow.opacity = 0.12 * halo;
 		mats.ring.color.set(0x4fd2ff).multiplyScalar(0.12 + 0.88 * dockOn);
 		mats.dockGlow.opacity = 0.9 * dockOn;
 
@@ -190,12 +190,12 @@ function Studio() {
 	return (
 		<Environment resolution={512} frames={1} environmentIntensity={1.0}>
 			<color attach="background" args={['#030405']} />
-			<Lightformer form="rect" intensity={3.5} position={[0, 7, 0]} scale={[5, 5, 1]} target={[0, 0, 0]} />
-			<Lightformer form="rect" intensity={14} color="#fff4e6" position={[-6, 2, 3]} scale={[0.55, 10, 1]} target={[0, 0.5, 0]} />
-			<Lightformer form="rect" intensity={10} color="#eaf3ff" position={[6, 2, 3.5]} scale={[0.5, 10, 1]} target={[0, 0.5, 0]} />
-			<Lightformer form="rect" intensity={2.2} color="#fff7ee" position={[0, 1.5, 8]} scale={[5, 3, 1]} target={[0, 0.5, 0]} />
-			<Lightformer form="rect" intensity={6} color="#4fc8ff" position={[6, 2, -6]} scale={[1.2, 9, 1]} target={[0, 0.5, 0]} />
-			<Lightformer form="rect" intensity={5} color="#a07bff" position={[-6, 2, -6]} scale={[1.2, 9, 1]} target={[0, 0.5, 0]} />
+			<Lightformer form="rect" intensity={2.6} position={[0, 7, 0]} scale={[9, 9, 1]} target={[0, 0, 0]} />
+			<Lightformer form="rect" intensity={3.2} color="#fff4e6" position={[-6, 2, 3]} scale={[2.2, 10, 1]} target={[0, 0.5, 0]} />
+			<Lightformer form="rect" intensity={2.4} color="#eaf3ff" position={[6, 2, 3.5]} scale={[2.2, 10, 1]} target={[0, 0.5, 0]} />
+			<Lightformer form="rect" intensity={1.8} color="#fff7ee" position={[0, 1.5, 8]} scale={[8, 5, 1]} target={[0, 0.5, 0]} />
+			<Lightformer form="rect" intensity={1.6} color="#4fc8ff" position={[6, 2, -6]} scale={[1.6, 9, 1]} target={[0, 0.5, 0]} />
+			<Lightformer form="rect" intensity={1.4} color="#a07bff" position={[-6, 2, -6]} scale={[1.6, 9, 1]} target={[0, 0.5, 0]} />
 			<Lightformer form="rect" intensity={1.4} color="#ffd9b0" position={[0, -3, 2]} rotation-x={Math.PI / 2} scale={[14, 10, 1]} target={[0, 0, 0]} />
 		</Environment>
 	);
@@ -217,7 +217,7 @@ export default function LevoCanvas({ rig, active = true, onReady }) {
 			style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
 		>
 			<Studio />
-			<hemisphereLight args={['#dfe9ff', '#2a2420', 0.2]} />
+			<hemisphereLight args={['#dfe9ff', '#3a322c', 0.45]} />
 			<directionalLight
 				position={[-2.6, 5.2, 2.2]}
 				intensity={1.5}

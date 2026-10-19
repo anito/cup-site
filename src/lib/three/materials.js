@@ -138,13 +138,13 @@ export function createMaterials() {
 	/* anodised champagne titanium; the smoked label is matte black and barely reflective */
 	const shell = withLabel(
 		new MeshPhysicalMaterial({
-			color: linear(0.6, 0.5, 0.38),
-			metalness: 1,
-			roughness: 0.3,
+			color: linear(0.52, 0.45, 0.36),
+			metalness: 0.85,
+			roughness: 0.52,
 			anisotropy: 0,
 			bumpMap: lines,
-			bumpScale: 0.25,
-			envMapIntensity: 1.25
+			bumpScale: 0.18,
+			envMapIntensity: 0.75
 		}),
 		label,
 		function shellInject(shader) {
@@ -167,10 +167,10 @@ export function createMaterials() {
 	);
 
 	const liner = new MeshPhysicalMaterial({
-		color: linear(0.3, 0.31, 0.34),
+		color: linear(0.26, 0.27, 0.3),
 		metalness: 1,
-		roughness: 0.3,
-		envMapIntensity: 1.1
+		roughness: 0.42,
+		envMapIntensity: 0.55
 	});
 
 	/* the Halo: emissive, dimmed (not hidden) by the label so the ring reads through it */
@@ -181,7 +181,7 @@ export function createMaterials() {
 			shader.fragmentShader = shader.fragmentShader.replace(
 				'#include <color_fragment>',
 				`#include <color_fragment>
-				diffuseColor.rgb *= 1.15 * (1.0 - 0.66 * labelAlpha(vLocal));`
+				diffuseColor.rgb *= 0.8 * (1.0 - 0.66 * labelAlpha(vLocal));`
 			);
 		}
 	);
@@ -333,10 +333,10 @@ export function createMaterials() {
 			...extra
 		});
 	const haloGlow = [
-		additive(0.3, { alphaMap: verticalGlowTexture(), side: DoubleSide }),
-		additive(0.13, { alphaMap: verticalGlowTexture(), side: DoubleSide })
+		additive(0.12, { alphaMap: verticalGlowTexture(), side: DoubleSide }),
+		additive(0.06, { alphaMap: verticalGlowTexture(), side: DoubleSide })
 	];
-	const lipGlow = additive(0.22);
+	const lipGlow = additive(0.12);
 	const dockGlow = new MeshBasicMaterial({
 		map: dockGlowTexture(),
 		transparent: true,
