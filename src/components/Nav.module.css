@@ -60,3 +60,40 @@
 			display: none;
 		}
 	}
+
+.links a {
+	position: relative;
+}
+.links a::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: -6px;
+	height: 1.5px;
+	background: var(--accent, var(--cyan));
+	transform: scaleX(0);
+	transform-origin: left;
+	transition: transform 0.5s var(--ease);
+}
+.links a.current {
+	color: var(--ink);
+}
+.links a.current::after {
+	transform: scaleX(1);
+}
+.progress {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 2px;
+	background: linear-gradient(90deg, var(--cyan), var(--violet) 45%, var(--amber));
+	transform-origin: left;
+	transform: scaleX(0);
+	box-shadow: 0 0 10px rgba(63, 208, 255, 0.5);
+	will-change: transform;
+}
+.cta.on {
+	box-shadow: 0 0 30px -4px var(--cyan);
+}
