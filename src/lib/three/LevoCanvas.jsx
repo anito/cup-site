@@ -6,6 +6,7 @@ import { Environment, Lightformer } from '@react-three/drei';
 import { PlaneGeometry, CircleGeometry } from 'three';
 import { cupBody, haloShell, lipGlow, sleeve as sleeveGeometry, lidBody, lidRing, sipSlot, drinkDisc, LID } from './geometry.js';
 import { createMaterials } from './materials.js';
+import Workshop, { blobTexture } from './Workshop.jsx';
 
 const TARGET_Y = 0.5; // the point the camera looks at (centre of the cup + coaster)
 const CAM_DIST = 5.2;
@@ -26,6 +27,8 @@ function Levo({ rig, onReady }) {
 	const group = useRef();
 	const cup = useRef();
 	const lid = useRef();
+	const desk = useRef();
+	const cupShadow = useRef();
 	const lidMesh = useRef();
 	const decals = useRef();
 	const { camera, size } = useThree();
@@ -80,32 +83,47 @@ function Levo({ rig, onReady }) {
 		}
 
 		const phase = (((rig.frame / 72) % 1) + 1) % 1;
-		const el = ((19 + 11 * Math.sin(2 * Math.PI * phase)) * Math.PI) / 180;
+		// topT: 1 = looking straight down at the workshop desk, 0 = the side view of the levitating cup
+		const topT = clamp01(rig.topT ?? 0);
+		const ease = topT * topT * (3 - 2 * topT);
+		const elSide = ((19 + 11 * Math.sin(2 * Math.PI * phase)) * Math.PI) / 180;
+		const el = elSide + ((86 * Math.PI) / 180 - elSide) * ease;
 		camera.position.set(0, TARGET_Y + CAM_DIST * Math.sin(el), CAM_DIST * Math.cos(el));
 		camera.lookAt(0, TARGET_Y, 0);
 
 		/* sealed (cup + lid stacked, centred ~0.43 higher) -> coaster mode */
 		const T = clamp01(rig.lidT ?? 0);
 		const shift = -0.43 * (1 - sm(0.3, 1, T));
-		group.current.scale.setScalar(k);
-		group.current.position.set(dx, dy + TARGET_Y * (1 - k) + shift * k, 0);
+		const s = k * (1 - 0.3 * ease); // zoomed out over the desk
+		group.current.scale.setScalar(s);
+		group.current.position.set(dx, dy + TARGET_Y * (1 - s) + shift * s, 0);
+
+		// the desk drops away as the camera tilts
+		const away = sm(0.15, 1, 1 - topT);
+		desk.current.position.y = -9 * away;
+		desk.current.visible = away < 0.99;
 
 		const idle = rig.reduce ? 0 : 0.012 * Math.sin(t * 1.4);
-		const cupY = HOVER + 0.035 * Math.sin(2 * Math.PI * phase) + idle;
+		const lift = sm(0.1, 0.9, 1 - topT);
+		const cupY = 0.015 + (HOVER + 0.035 * Math.sin(2 * Math.PI * phase) + idle - 0.015) * lift;
 		const cupRot = (-20 * Math.PI) / 180 - (rig.frame / 72) * 2 * Math.PI + (rig.mouse || 0);
 		cup.current.position.y = cupY;
 		cup.current.rotation.y = cupRot;
 
 		// lid pose along its path
-		const lift = sm(0, 0.22, T);
+		const lidLift = sm(0, 0.22, T);
 		const side = sm(0.22, 0.5, T);
 		const down = sm(0.5, 0.85, T);
 		const back = sm(0.85, 1, T);
 		const seatY = cupY + LID.seat;
 		const flip = sm(0.3, 0.8, T);
-		lid.current.position.set(SIDE * side * (1 - back), (seatY + LIFT * lift) * (1 - down), 0);
+		lid.current.position.set(SIDE * side * (1 - back), (seatY + LIFT * lidLift) * (1 - down), 0);
 		// yaw follows the cup while seated; the coaster is rotationally symmetric, so it just lets go
 		lid.current.rotation.set(Math.PI * flip, cupRot * (1 - sm(0.18, 0.4, T)), 0.35 * Math.sin(Math.PI * sm(0.2, 0.85, T)), 'YXZ');
+
+		// contact shadow under the cup: only while it rests on the desk
+		cupShadow.current.material.opacity = 0.75 * (1 - lift);
+		cupShadow.current.visible = lift < 0.99;
 
 		// the lid deforms: capping lid (skirt + plug over the rim) -> flat coaster slab as it flips and lands
 		const morph = sm(0.45, 0.85, T);
@@ -135,6 +153,11 @@ function Levo({ rig, onReady }) {
 
 	return (
 		<group ref={group}>
+			<Workshop ref={desk} />
+			<mesh ref={cupShadow} position={[0.04, 0.008, 0.06]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
+				<planeGeometry args={[1.75, 1.75]} />
+				<meshBasicMaterial map={blobTexture()} transparent depthWrite={false} toneMapped={false} />
+			</mesh>
 			{/* the lid; flipped, it is the coaster */}
 			<group ref={lid}>
 				<mesh ref={lidMesh} geometry={geo.lid} material={mats.lid} />

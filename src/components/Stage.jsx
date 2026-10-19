@@ -77,7 +77,7 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 	const chapterRefs = useRef([]);
 
 	/* shared with the 3D scene, which reads it every frame (no React re-render) */
-	const rig = useRef({ frame: 0, mouse: 0, lidT: 0, cupEl: null, reduce: false }).current;
+	const rig = useRef({ frame: 0, mouse: 0, lidT: 0, topT: 1, cupEl: null, reduce: false }).current;
 
 	const [temp, setTemp] = useState(22);
 	const [railIndex, setRailIndex] = useState(0);
@@ -121,6 +121,7 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 			const { gsap, ScrollTrigger, reduce } = await getMotion();
 			if (disposed) return;
 			rig.reduce = reduce;
+			if (reduce) rig.topT = 0;
 			const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 			let heroWeight = 1;
 
@@ -187,6 +188,8 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 				});
 
 				tl.to(rig, { frame: 144, duration: 1 }, 0);
+				// the opening: a top-down view of the saddlery desk that tilts into the side view
+				tl.to(rig, { topT: 0, duration: 0.1, ease: 'power2.inOut' }, 0.005);
 				tl.to(heroRef.current, { opacity: 0, y: -30, duration: 0.06, ease: 'power1.in' }, 0.015);
 				tl.to(wordmarkRef.current, { yPercent: -18, scale: 1.1, duration: 0.3 }, 0);
 				tl.to(wordmarkRef.current, { opacity: 0, duration: 0.12 }, 0.12);
@@ -237,7 +240,7 @@ export default function Stage({ onProgress = () => {}, onReady = () => {} }) {
 				/* intro */
 				const intro = gsap.timeline({ defaults: { ease: 'power3.out' }, delay: 0.35 });
 				intro
-					.from(glRef.current, { scale: 0.94, opacity: 0, duration: 1.6 }, 0.1)
+					.from(glRef.current, { opacity: 0, duration: 1.6 }, 0.1)
 					.from(wordmarkRef.current, { yPercent: 12, opacity: 0, duration: 1.6 }, 0)
 					.from(glowRef.current, { opacity: 0, duration: 2 }, 0)
 					.from(heroLeftRef.current.children, { y: 40, opacity: 0, duration: 1.1, stagger: 0.12 }, 0.5)
