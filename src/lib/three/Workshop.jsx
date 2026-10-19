@@ -19,7 +19,7 @@ function matTexture() {
 	cv.height = Math.round((1480 * MAT_D) / MAT_W);
 	const c = cv.getContext('2d');
 	const px = cv.width / MAT_W; // pixels per unit
-	c.fillStyle = '#1b1c1f';
+	c.fillStyle = '#26282c';
 	c.fillRect(0, 0, cv.width, cv.height);
 	for (let i = 0; i < 30000; i++) {
 		c.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${rnd(0.012, 0.045)})`;
@@ -28,7 +28,7 @@ function matTexture() {
 	// fine measuring grid: light every 0.25, stronger every 1.0
 	for (let u = 0; u <= MAT_W + 0.001; u += 0.5) {
 		const strong = Math.abs(u - Math.round(u)) < 1e-6;
-		c.strokeStyle = `rgba(230,232,236,${strong ? 0.2 : 0.1})`;
+		c.strokeStyle = `rgba(230,232,236,${strong ? 0.34 : 0.17})`;
 		c.lineWidth = strong ? 2 : 1;
 		c.beginPath();
 		c.moveTo(u * px, 0);
@@ -37,7 +37,7 @@ function matTexture() {
 	}
 	for (let v = 0; v <= MAT_D + 0.001; v += 0.5) {
 		const strong = Math.abs(v - Math.round(v)) < 1e-6;
-		c.strokeStyle = `rgba(230,232,236,${strong ? 0.2 : 0.1})`;
+		c.strokeStyle = `rgba(230,232,236,${strong ? 0.34 : 0.17})`;
 		c.lineWidth = strong ? 2 : 1;
 		c.beginPath();
 		c.moveTo(0, v * px);
@@ -52,10 +52,62 @@ function matTexture() {
 	c.moveTo(cv.width, 0);
 	c.lineTo(0, cv.height);
 	c.stroke();
+	// soft window-light sheen sweeping diagonally across the pad, with a second, fainter band
+	const sheen = c.createLinearGradient(cv.width * 0.05, cv.height * 0.85, cv.width * 0.75, cv.height * 0.05);
+	sheen.addColorStop(0, 'rgba(255,255,255,0)');
+	sheen.addColorStop(0.28, 'rgba(255,255,255,0)');
+	sheen.addColorStop(0.5, 'rgba(255,255,255,0.4)');
+	sheen.addColorStop(0.68, 'rgba(255,255,255,0)');
+	sheen.addColorStop(0.76, 'rgba(255,255,255,0.14)');
+	sheen.addColorStop(0.82, 'rgba(255,255,255,0)');
+	c.fillStyle = sheen;
+	c.fillRect(0, 0, cv.width, cv.height);
+	const vig = c.createRadialGradient(cv.width * 0.5, cv.height * 0.5, cv.height * 0.2, cv.width * 0.5, cv.height * 0.5, cv.width * 0.75);
+	vig.addColorStop(0, 'rgba(0,0,0,0)');
+	vig.addColorStop(1, 'rgba(0,0,0,0.35)');
+	c.fillStyle = vig;
+	c.fillRect(0, 0, cv.width, cv.height);
 	const t = new CanvasTexture(cv);
 	t.colorSpace = SRGBColorSpace;
 	t.anisotropy = 8;
 	t.wrapS = t.wrapT = RepeatWrapping;
+	return t;
+}
+
+/* roughness map: a smooth glossy base with fine scratches, cut marks and soft smudges (white = rougher) */
+function matRoughness() {
+	const cv = document.createElement('canvas');
+	cv.width = 1024;
+	cv.height = Math.round((1024 * MAT_D) / MAT_W);
+	const c = cv.getContext('2d');
+	c.fillStyle = '#6a6a6a';
+	c.fillRect(0, 0, cv.width, cv.height);
+	for (let i = 0; i < 90; i++) {
+		const x = rnd(0, cv.width);
+		const y = rnd(0, cv.height);
+		const r = rnd(30, 140);
+		const g = c.createRadialGradient(x, y, 0, x, y, r);
+		g.addColorStop(0, `rgba(255,255,255,${rnd(0.05, 0.16)})`);
+		g.addColorStop(1, 'rgba(255,255,255,0)');
+		c.fillStyle = g;
+		c.fillRect(x - r, y - r, r * 2, r * 2);
+	}
+	c.lineCap = 'round';
+	for (let i = 0; i < 700; i++) {
+		const x = rnd(0, cv.width);
+		const y = rnd(0, cv.height);
+		const a = rnd(0, Math.PI);
+		const len = rnd(10, 90);
+		c.strokeStyle = `rgba(255,255,255,${rnd(0.12, 0.55)})`;
+		c.lineWidth = rnd(0.4, 1.4);
+		c.beginPath();
+		c.moveTo(x, y);
+		c.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
+		c.stroke();
+	}
+	const t = new CanvasTexture(cv);
+	t.wrapS = t.wrapT = RepeatWrapping;
+	t.anisotropy = 8;
 	return t;
 }
 
@@ -78,12 +130,22 @@ export function blobTexture() {
 
 export default function Workshop({ ref }) {
 	const map = useMemo(() => matTexture(), []);
+	const rough = useMemo(() => matRoughness(), []);
 	const geo = useMemo(() => new BoxGeometry(MAT_W, 0.07, MAT_D), []);
 	return (
 		<group ref={ref}>
 			{/* rotated pad: its bottom-left corner sits just down-right of the cup, the rest runs off the top and right edges */}
 			<mesh geometry={geo} position={[PAD.x, -0.03, PAD.z]} rotation={[0, PAD.rot, 0]} receiveShadow>
-				<meshStandardMaterial map={map} color="#a8a8a8" roughness={0.8} metalness={0} envMapIntensity={0.7} />
+				<meshPhysicalMaterial
+					map={map}
+					color="#6c6c6c"
+					roughness={0.5}
+					roughnessMap={rough}
+					metalness={0.1}
+					clearcoat={0.3}
+					clearcoatRoughness={0.32}
+					envMapIntensity={1.2}
+				/>
 			</mesh>
 		</group>
 	);
